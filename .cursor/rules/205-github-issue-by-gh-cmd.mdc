@@ -1,0 +1,278 @@
+---
+description: GitHub CLI를 사용하여 로컬 Markdown 파일로부터 GitHub Issue를 자동 생성하고 프로젝트에 등록하는 절차
+globs: ["tasks/**/*.md"]
+alwaysApply: false
+---
+
+# GitHub Issue 자동 생성 절차 (gh CLI)
+
+## 개요
+로컬 `tasks/` 디렉토리의 Markdown 파일을 GitHub Issue로 자동 생성하고, 프로젝트 로드맵에 일정을 등록하는 절차입니다.
+
+## 파일 구조
+마크다운 파일은 YAML frontmatter와 본문으로 구성됩니다:
+
+```markdown
+---
+title: "[카테고리] 이슈 제목"
+labels: ["label1", "label2"]
+assignees: []
+---
+
+## 배경 (Context)
+...
+
+## 목표 (Goals)
+...
+
+## 작업 상세 (Tasks)
+...
+```
+
+## 단계별 절차
+
+### 1단계: 사전 확인
+#### 1.1 저장소 정보 확인
+```powershell
+gh repo view --json nameWithOwner,url
+```
+
+#### 1.2 GitHub 인증 확인
+```powershell
+gh auth status
+```
+
+### 2단계: 중복 이슈 확인
+#### 2.1 제목으로 검색
+```powershell
+gh issue list --search "이슈제목" --json number,title
+```
+- 동일 제목 이슈 존재 여부 확인
+- 결과가 비어있으면 진행
+
+### 3단계: 마크다운 파일 파싱 및 준비
+#### 3.1 Frontmatter 추출
+- `title`: 이슈 제목
+- `labels`: 라벨 배열 (필요 시 "Issue Automation" 추가)
+- `assignees`: 담당자 배열
+
+#### 3.2 본문 추출
+- YAML frontmatter 이후의 모든 내용을 본문으로 사용
+- `---` 구분선 이후부터 파일 끝까지
+
+#### 3.3 본문 임시 파일 생성
+```powershell
+# issue-body-temp.md 파일에 본문만 저장 (YAML frontmatter 제외)
+```
+
+### 4단계: 이슈 생성
+#### 4.1 기본 이슈 생성
+```powershell
+cd SCON-Firebase/tasks
+gh issue create `
+  --title "[카테고리] 이슈 제목" `
+  --body-file issue-body-temp.md `
+  --label "label1,label2,Issue Automation"
+```
+
+**옵션 설명:**
+- `--title`: Frontmatter의 `title` 값 사용
+- `--body-file`: 본문이 포함된 임시 파일 경로
+- `--label`: Frontmatter의 `labels` + "Issue Automation" 추가
+
+**참고:** PowerShell에서는 백틱(`)으로 줄바꿈, `&&` 대신 세미콜론(`;`) 사용
+
+#### 4.2 생성 확인
+```powershell
+gh issue view <이슈번호> --json number,title,labels,url
+```
+
+### 5단계: 프로젝트 등록
+#### 5.1 프로젝트 목록 확인
+```powershell
+gh project list --limit 10
+```
+
+#### 5.2 프로젝트에 이슈 추가
+```powershell
+gh project item-add <프로젝트번호> --owner <소유자> --url <이슈URL>
+```
+
+### 6단계: 프로젝트 필드 확인 및 날짜 설정
+#### 6.1 프로젝트 필드 목록 확인
+```powershell
+gh project field-list <프로젝트번호> --owner <소유자> --format json
+```
+- 필드 ID 확인:
+  - `Start date`: 필드 ID
+  - `Target date`: 필드 ID
+
+#### 6.2 Backlog 상태 이슈 일정 확인
+```powershell
+# 방법 1: JSON 파싱을 통한 필터링 (PowerShell)
+gh project item-list <프로젝트번호> --owner <소유자> --format json | `
+  ConvertFrom-Json | `
+  Where-Object { $_.status -eq "Backlog" } | `
+  Select-Object @{Name='Issue';Expression={$_.content.number}}, `
+                 @{Name='Title';Expression={$_.content.title}}, `
+                 @{Name='StartDate';Expression={$_.'start date'}}, `
+                 @{Name='TargetDate';Expression={$_.'target date'}}, `
+                 @{Name='Status';Expression={$_.status}} | `
+  Format-Table
+
+# 방법 2: jq를 사용한 필터링 (jq 설치된 경우)
+gh project item-list <프로젝트번호> --owner <소유자> --format json | `
+  jq '.items[] | select(.status == "Backlog") | {number: .content.number, title: .content.title, start_date: ."start date", target_date: ."target date", status: .status}'
+```
+
+**설명:**
+- **방법 1**: PowerShell의 `Where-Object`로 `status`가 "Backlog"인 항목만 필터링
+- **방법 2**: `jq`로 JSON 필터링 (설치 필요)
+- Backlog 이슈의 start date, target date 확인
+- 가장 최근 종료일(target date) 이후로 새 이슈 일정 결정
+
+#### 6.3 프로젝트 아이템 ID 확인
+```powershell
+gh project item-list <프로젝트번호> --owner <소유자> --format json | `
+  ConvertFrom-Json | `
+  Where-Object { $_.content.number -eq <이슈번호> } | `
+  Select-Object -ExpandProperty id
+```
+
+#### 6.4 Start Date 설정
+```powershell
+gh api graphql `
+  -f query='mutation($project:ID!,$item:ID!,$field:ID!,$value:Date!){updateProjectV2ItemFieldValue(input:{projectId:$project itemId:$item fieldId:$field value:{date:$value}}){projectV2Item{id}}}' `
+  -f project=<프로젝트ID> `
+  -f item=<아이템ID> `
+  -f field=<StartDate필드ID> `
+  -f value=YYYY-MM-DD
+```
+
+#### 6.5 Target Date 설정
+```powershell
+gh api graphql `
+  -f query='mutation($project:ID!,$item:ID!,$field:ID!,$value:Date!){updateProjectV2ItemFieldValue(input:{projectId:$project itemId:$item fieldId:$field value:{date:$value}}){projectV2Item{id}}}' `
+  -f project=<프로젝트ID> `
+  -f item=<아이템ID> `
+  -f field=<TargetDate필드ID> `
+  -f value=YYYY-MM-DD
+```
+
+**GraphQL Mutation 설명:**
+- `updateProjectV2ItemFieldValue`: Projects V2 필드 값 업데이트
+- `projectId`: 프로젝트 ID
+- `itemId`: 프로젝트 아이템 ID
+- `fieldId`: 필드 ID (Start date 또는 Target date)
+- `value.date`: 날짜 값 (YYYY-MM-DD 형식)
+
+**날짜 결정 로직:**
+- Backlog 상태 이슈 중 가장 최근 `target date` 확인
+- 새 이슈의 `start date` = 가장 최근 종료일 + 1일
+- 새 이슈의 `target date` = start date + 작업 예상 기간 (보통 1-2일)
+
+### 7단계: 정리 및 확인
+#### 7.1 임시 파일 삭제
+```powershell
+Remove-Item SCON-Firebase/tasks/issue-body-temp.md
+```
+
+#### 7.2 최종 확인
+```powershell
+gh issue view <이슈번호> --json number,title,labels,url
+gh project item-list <프로젝트번호> --owner <소유자> --format json | `
+  ConvertFrom-Json | `
+  Where-Object { $_.content.number -eq <이슈번호> } | `
+  Select-Object @{Name='Issue';Expression={$_.content.number}}, `
+                 @{Name='Title';Expression={$_.content.title}}, `
+                 @{Name='StartDate';Expression={$_.'start date'}}, `
+                 @{Name='TargetDate';Expression={$_.'target date'}}, `
+                 @{Name='Status';Expression={$_.status}}
+```
+
+## 전체 스크립트 예시 (PowerShell)
+
+```powershell
+# 변수 설정
+$markdownFile = "SCON-Firebase/tasks/ISSUE-XX-example.md"
+$projectNumber = 1
+$projectOwner = "beyondnr"
+$projectId = "PVT_kwHODosKMM4BIuJk"
+$startDateFieldId = "PVTF_lAHODosKMM4BIuJkzg5GUPE"
+$targetDateFieldId = "PVTF_lAHODosKMM4BIuJkzg5GUPI"
+
+# 1. 파일 파싱 (YAML frontmatter 추출)
+# 2. 중복 확인
+gh issue list --search "제목" --json number,title
+
+# 3. 본문 추출 및 임시 파일 생성
+# (YAML frontmatter 제외한 본문만 저장)
+
+# 4. 이슈 생성
+$issueUrl = gh issue create --title "제목" --body-file issue-body-temp.md --label "라벨1,라벨2,Issue Automation" --json url -q .url
+
+# 5. 프로젝트에 추가
+gh project item-add $projectNumber --owner $projectOwner --url $issueUrl
+
+# 6. Backlog 상태 이슈의 최근 종료일 확인
+$backlogItems = gh project item-list $projectNumber --owner $projectOwner --format json | ConvertFrom-Json | Where-Object { $_.status -eq "Backlog" }
+$latestTargetDate = ($backlogItems | Where-Object { $_.'target date' } | Sort-Object { [DateTime]$_.'target date' } -Descending | Select-Object -First 1).'target date'
+
+# 날짜 계산 (가장 최근 종료일 + 1일)
+$newStartDate = if ($latestTargetDate) { 
+    ([DateTime]$latestTargetDate).AddDays(1).ToString("yyyy-MM-dd") 
+} else { 
+    (Get-Date).ToString("yyyy-MM-dd") 
+}
+$newTargetDate = ([DateTime]$newStartDate).AddDays(1).ToString("yyyy-MM-dd")
+
+# 프로젝트 아이템 ID 확인
+$itemId = gh project item-list $projectNumber --owner $projectOwner --format json | ConvertFrom-Json | Where-Object { $_.content.url -eq $issueUrl } | Select-Object -ExpandProperty id
+
+# 날짜 설정
+gh api graphql -f query='mutation($project:ID!,$item:ID!,$field:ID!,$value:Date!){updateProjectV2ItemFieldValue(input:{projectId:$project itemId:$item fieldId:$field value:{date:$value}}){projectV2Item{id}}}' -f project=$projectId -f item=$itemId -f field=$startDateFieldId -f value=$newStartDate
+
+gh api graphql -f query='mutation($project:ID!,$item:ID!,$field:ID!,$value:Date!){updateProjectV2ItemFieldValue(input:{projectId:$project itemId:$item fieldId:$field value:{date:$value}}){projectV2Item{id}}}' -f project=$projectId -f item=$itemId -f field=$targetDateFieldId -f value=$newTargetDate
+
+# 7. 정리
+Remove-Item issue-body-temp.md
+```
+
+## 주의사항
+
+1. **PowerShell 특수문자**: 백틱(`)으로 줄바꿈, `&&` 대신 `;` 사용
+2. **날짜 형식**: YYYY-MM-DD (예: `2025-12-06`)
+3. **프로젝트 ID**: `gh project view`로 확인 가능
+4. **필드 ID**: `gh project field-list`로 확인 가능
+5. **중복 방지**: 생성 전 제목으로 검색하여 확인
+6. **Status 필터링**: Backlog 상태 이슈만 확인하여 일정 충돌 방지
+
+## 참고 명령어
+
+```powershell
+# 저장소 정보
+gh repo view
+
+# 이슈 목록
+gh issue list
+
+# 프로젝트 목록
+gh project list
+
+# 프로젝트 필드 확인
+gh project field-list <프로젝트번호> --owner <소유자>
+
+# 프로젝트 아이템 확인 (전체)
+gh project item-list <프로젝트번호> --owner <소유자>
+
+# 프로젝트 아이템 확인 (Backlog만)
+gh project item-list <프로젝트번호> --owner <소유자> --format json | ConvertFrom-Json | Where-Object { $_.status -eq "Backlog" }
+```
+
+## 자동화 시 고려사항
+
+- 마크다운 파일 파싱은 YAML frontmatter 파서 사용 권장
+- 중복 체크는 필수 단계로 포함
+- 날짜 설정은 Backlog 상태 이슈 기준으로만 계산
+- 에러 핸들링 및 롤백 로직 고려
+- 임시 파일은 반드시 정리

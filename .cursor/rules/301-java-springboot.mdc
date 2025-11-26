@@ -1,0 +1,26 @@
+---
+description: Spring Boot Best Practices and Core Rules
+globs: **/*.java
+alwaysApply: true
+---
+# Spring Boot Best Practices
+
+## Dependency Injection
+- **Constructor Injection**: ALWAYS use Constructor Injection over Field Injection (`@Autowired` on fields).
+- Use Lombok's `@RequiredArgsConstructor` to automate constructor generation for `final` fields.
+
+## Logging
+- Use `@Slf4j` (Lombok) for logging.
+- Do not use `System.out.println`.
+- Log levels: `ERROR` (Exceptions), `WARN` (Recoverable issues), `INFO` (Business events), `DEBUG` (Dev info).
+
+## Lombok Usage
+- Use `@Getter`, `@Setter`, `@ToString`, `@Builder` to reduce boilerplate.
+- Avoid `@Data` on Entities (risk of stack overflow with `hashCode/equals`). Use `@Getter` + `@Setter` + `@ToString` instead.
+
+## Response Format
+- Standardize API responses (e.g., `ApiResponse<T>`).
+- Include `status`, `message`, `data`, and `timestamp`.
+
+## API Versioning
+- Prefix endpoints with `/api/v1/...`.

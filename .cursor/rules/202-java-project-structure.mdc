@@ -1,0 +1,37 @@
+---
+description: Java Spring Boot Project Folder Structure
+globs: **/*.java
+alwaysApply: true
+---
+# Java Spring Boot Project Structure
+
+## Standard Package Layout
+Root Package: `com.scon` (or appropriate group ID)
+
+### Core Layers
+- **`controller`**: REST Controllers. Handle HTTP requests and responses. Convert DTOs.
+- **`service`**: Business Logic. Transaction boundaries.
+- **`repository`**: Data Access Layer (Spring Data JPA interfaces).
+- **`entity`** (or `domain`): JPA Entities. Maps to Database tables.
+- **`dto`**: Data Transfer Objects. Request/Response payloads.
+- **`config`**: Spring Configuration classes (`@Configuration`).
+- **`exception`**: Global Exception Handling (`@ControllerAdvice`) and Custom Exceptions.
+- **`util`**: Static utility classes (Helpers).
+
+## Module/Feature Organization (Preferred for larger scopes)
+For large features, use a package-by-feature approach within the root:
+`com.scon.schedule`
+  - `ScheduleController`
+  - `ScheduleService`
+  - `ScheduleRepository`
+  - `Schedule` (Entity)
+
+## File Naming
+- Classes: PascalCase (e.g., `ScheduleService`).
+- Methods/Variables: camelCase (e.g., `findScheduleById`).
+- Constants: UPPER_SNAKE_CASE.
+
+## Guidelines
+- **Controllers** should be thin; delegate logic to Services.
+- **Services** should return DTOs, not Entities (unless internal).
+- **Repositories** should return Entities.

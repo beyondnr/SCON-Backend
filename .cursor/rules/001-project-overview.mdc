@@ -1,0 +1,42 @@
+---
+description: SCON (Shift Control) Project Overview
+globs: 
+alwaysApply: true
+---
+# PROJECT OVERVIEW: SCON (Shift Control)
+
+## Vision
+SCON (Shift Control) is a SaaS solution designed to simplify shift management for bakery cafes and small to medium-sized businesses. It aims to eliminate the chaos of manual scheduling, optimize labor costs, and streamline communication between managers and part-time staff through an intuitive interface and AI-powered automation.
+
+## Core Features
+- **Smart Dashboard**: Real-time overview of today's workers, pending approvals, and estimated labor costs.
+- **Shift Management**: Intuitive schedule planning with availability checking and conflict detection.
+- **Onboarding Wizard**: Step-by-step setup flow for stores, simplifying account creation, store details, and staff registration.
+- **Reports**: Automated payroll calculations and operational cost analysis.
+- **Compliance Engine**: Automated checks for labor law violations (52h work week, break times, etc.).
+- **Document Generation**: Auto-generation of payroll reports and evidence documents (PDF/Excel).
+
+## Target Audience
+- **Primary Users**: Store Owners & Managers (Bakery Cafes, Retail, F&B) who spend excessive time on manual scheduling.
+- **Secondary Users**: Part-time Employees who need easy access to their schedules and a simple way to request shift changes.
+
+## Project Goals
+- **Efficiency**: Reduce time spent on scheduling by 50% through UI optimizations and automation.
+- **Accuracy**: Eliminate payroll calculation errors and scheduling conflicts.
+- **Scalability**: Build a robust architecture capable of supporting multi-store management.
+
+## Success Metrics
+- **User Activation**: Completion rate of the Onboarding Wizard.
+- **Retention**: Daily/Weekly Active Users (DAU/WAU) checking the dashboard.
+- **Task Completion Time**: Time taken to create and publish a weekly schedule.
+- **Compliance Rate**: Percentage of schedules with zero labor law violations.
+
+## Project Philosophy
+- **Dashboard First**: Prioritize the most critical information (Approvals, Costs) on the landing screen.
+- **Simplicity**: Complex logic (e.g., labor laws, overtime) should be hidden behind a simple UI.
+- **Reliability**: Data integrity is paramount for payroll and attendance records.
+- **Robust Backend**: Leverage Java 17, Spring Boot 3.x, and MySQL for a stable, scalable, and secure service.
+
+## See also:
+- [002-tech-stack.mdc](002-tech-stack.mdc) for implementation details
+- [003-development-guidelines.mdc](003-development-guidelines.mdc) for development standards

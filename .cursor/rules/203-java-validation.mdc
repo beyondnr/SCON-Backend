@@ -1,0 +1,29 @@
+---
+description: Java Data Validation Rules
+globs: **/*.java
+alwaysApply: true
+---
+# Data Validation Rules
+
+## Jakarta Bean Validation
+- Use `jakarta.validation.constraints` annotations in DTOs and Entities.
+- Common annotations: `@NotNull`, `@NotBlank`, `@Size`, `@Email`, `@Min`, `@Max`.
+
+## Request Validation
+- Add `@Valid` or `@Validated` to Controller method arguments (e.g., `@RequestBody @Valid CreateUserRequest request`).
+- Handle `MethodArgumentNotValidException` globally in `GlobalExceptionHandler`.
+
+## Custom Validation
+- Create custom annotations for complex business rules if reusable.
+- Implement `ConstraintValidator<A, T>`.
+
+## Example
+```java
+public class UserDto {
+    @NotBlank(message = "Name is required")
+    private String name;
+
+    @Email(message = "Invalid email format")
+    private String email;
+}
+```

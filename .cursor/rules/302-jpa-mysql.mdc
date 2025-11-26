@@ -1,0 +1,30 @@
+---
+description: JPA and MySQL Usage Rules
+globs: **/*.java
+alwaysApply: true
+---
+# JPA & MySQL Rules
+
+## Entity Definitions
+- Use `@Entity` and `@Table(name = "snake_case_names")`.
+- Use `@Id` and `@GeneratedValue(strategy = GenerationType.IDENTITY)` for primary keys (unless UUID is required).
+- If using UUIDs: `@GeneratedValue(strategy = GenerationType.UUID)` (Hibernate 6+).
+
+## Audit Fields
+- Extend a `BaseEntity` class containing:
+  - `@CreatedDate private LocalDateTime createdAt;`
+  - `@LastModifiedDate private LocalDateTime updatedAt;`
+- Use `@EntityListeners(AuditingEntityListener.class)`.
+
+## Relationships
+- Use Lazy Loading (`FetchType.LAZY`) for `@OneToMany` and `@ManyToOne` by default.
+- Avoid `EAGER` fetching to prevent N+1 problems.
+
+## Transactions
+- Use `@Transactional(readOnly = true)` on Service classes by default.
+- Override with `@Transactional` on methods that modify data.
+
+## Repository
+- Extend `JpaRepository<Entity, ID>`.
+- Use method naming conventions (e.g., `findByEmail`) for simple queries.
+- Use `@Query` for complex JPQL/Native queries.

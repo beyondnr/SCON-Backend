@@ -1,0 +1,34 @@
+---
+description: Project Technical Stack Definition (Backend)
+globs: 
+alwaysApply: true
+---
+# Technical Stack
+Referenced in: [001-project-overview.mdc](001-project-overview.mdc)
+
+## Backend Framework & Language
+- **Language**: Java 17 (LTS)
+- **Framework**: Spring Boot 3.x
+- **Build Tool**: Gradle (Kotlin DSL or Groovy) or Maven (Default to Gradle if not specified)
+
+## Database & Storage
+- **RDBMS**: MySQL 8.x (InnoDB Engine)
+- **ORM**: Spring Data JPA (Hibernate)
+- **Storage**: Object Storage (AWS S3 or compatible) for PDF/Excel evidence
+
+## Document Generation (Microservice)
+- **Language**: Python
+- **Framework**: FastAPI
+- **Libraries**: LangChain (for template/LLM integration)
+
+## AI & External
+- **LLM Provider**: OpenAI API or Google Gemini (via Gateway)
+- **Integration**: LangChain (Python layer)
+
+## Communication
+- **API Style**: REST (JSON)
+- **Documentation**: Swagger / OpenAPI 3.0
+- **Messaging**: KakaoTalk / SMS Gateway integration
+
+## See also:
+- [003-development-guidelines.mdc](003-development-guidelines.mdc)

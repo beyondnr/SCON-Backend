@@ -1,0 +1,31 @@
+---
+description: Global Exception Handling Rules
+globs: **/*.java
+alwaysApply: true
+---
+# Exception Handling
+
+## Global Strategy
+- Use `@RestControllerAdvice` to handle exceptions globally.
+- Return a consistent error response structure (e.g., `ErrorResponse`).
+
+## Standard Exceptions
+- `ResourceNotFoundException`: When an entity is not found (404).
+- `BadRequestException`: When input is invalid (400).
+- `BusinessException`: Base class for domain-specific logic errors.
+
+## Handling Validation Errors
+- Catch `MethodArgumentNotValidException`.
+- Extract field errors and return a structured list of violations.
+
+## Example
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNotFound(ResourceNotFoundException e) {
+        return new ErrorResponse("NOT_FOUND", e.getMessage());
+    }
+}
+```
