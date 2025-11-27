@@ -21,47 +21,47 @@ Spring Boot 3.x 프로젝트 구조를 초기화하고 개발을 위한 기본 �
 - [x] `README.md` 작성
 
 ### 3.2 의존성 추가 (`build.gradle`)
-- [ ] `spring-boot-starter-web` 추가 (REST API 개발용)
-- [ ] `spring-boot-starter-validation` 추가 (Jakarta Bean Validation)
-- [ ] `lombok` 추가 및 annotationProcessor 설정
+- [x] `spring-boot-starter-web` 추가 (REST API 개발용)
+- [x] `spring-boot-starter-validation` 추가 (Jakarta Bean Validation)
+- [x] `lombok` 추가 및 annotationProcessor 설정
 
 ### 3.3 패키지 구조 생성
-- [ ] `vibe.scon.scon_backend.config` 패키지 생성
-- [ ] `vibe.scon.scon_backend.controller` 패키지 생성
-- [ ] `vibe.scon.scon_backend.service` 패키지 생성
-- [ ] `vibe.scon.scon_backend.repository` 패키지 생성
-- [ ] `vibe.scon.scon_backend.entity` 패키지 생성
-- [ ] `vibe.scon.scon_backend.dto` 패키지 생성
-- [ ] `vibe.scon.scon_backend.exception` 패키지 생성
-- [ ] `vibe.scon.scon_backend.util` 패키지 생성
+- [x] `vibe.scon.scon_backend.config` 패키지 생성
+- [x] `vibe.scon.scon_backend.controller` 패키지 생성
+- [x] `vibe.scon.scon_backend.service` 패키지 생성
+- [x] `vibe.scon.scon_backend.repository` 패키지 생성
+- [x] `vibe.scon.scon_backend.entity` 패키지 생성
+- [x] `vibe.scon.scon_backend.dto` 패키지 생성
+- [x] `vibe.scon.scon_backend.exception` 패키지 생성
+- [x] `vibe.scon.scon_backend.util` 패키지 생성
 
 ### 3.4 프로파일 설정
-- [ ] `application.yml` 기본 설정 (공통)
-- [ ] `application-dev.yml` 개발 환경 설정
-- [ ] `application-prod.yml` 운영 환경 설정
+- [x] `application.yml` 기본 설정 (공통)
+- [x] `application-dev.yml` 개발 환경 설정
+- [x] `application-prod.yml` 운영 환경 설정
 
 ### 3.5 공통 응답 및 예외 처리
-- [ ] `ApiResponse<T>` 표준 응답 래퍼 클래스 정의
+- [x] `ApiResponse<T>` 표준 응답 래퍼 클래스 정의
   - 필드: `status`, `message`, `data`, `timestamp`
-- [ ] `ErrorResponse` 오류 응답 클래스 정의
-- [ ] `GlobalExceptionHandler` 구현 (`@RestControllerAdvice`)
+- [x] `ErrorResponse` 오류 응답 클래스 정의
+- [x] `GlobalExceptionHandler` 구현 (`@RestControllerAdvice`)
   - `MethodArgumentNotValidException` 처리 (400)
   - `ResourceNotFoundException` 처리 (404)
   - `BusinessException` 처리 (비즈니스 로직 오류)
   - 일반 `Exception` 처리 (500)
-- [ ] 커스텀 예외 클래스 정의
+- [x] 커스텀 예외 클래스 정의
   - `ResourceNotFoundException`
   - `BadRequestException`
   - `BusinessException`
 
 ### 3.6 Health Check API
-- [ ] `/api/v1/health` 엔드포인트 구현 (서버 상태 확인용)
+- [x] `/api/v1/health` 엔드포인트 구현 (서버 상태 확인용)
 
 ## 4. 완료 조건 (Acceptance Criteria)
 - [x] `./gradlew build` 명령어로 프로젝트가 성공적으로 빌드되어야 한다.
-- [ ] API 호출 시 성공/실패 응답이 표준 JSON 포맷으로 반환되어야 한다.
-- [ ] `/api/v1/health` 호출 시 `ApiResponse` 형식의 응답이 반환되어야 한다.
-- [ ] 잘못된 요청 시 `ErrorResponse` 형식으로 에러가 반환되어야 한다.
+- [x] API 호출 시 성공/실패 응답이 표준 JSON 포맷으로 반환되어야 한다.
+- [x] `/api/v1/health` 호출 시 `ApiResponse` 형식의 응답이 반환되어야 한다.
+- [x] 잘못된 요청 시 `ErrorResponse` 형식으로 에러가 반환되어야 한다.
 
 ## 5. 기술 스택
 - **Java**: 21 (LTS)
