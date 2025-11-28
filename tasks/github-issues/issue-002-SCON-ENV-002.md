@@ -47,7 +47,7 @@ assignees: []
 ### 3.8 Enum 타입 정의
 - [ ] `EmploymentType.java` (FULL_TIME, PART_TIME)
 - [ ] `ScheduleStatus.java` (DRAFT, PENDING, APPROVED, PUBLISHED)
-- [ ] `DayOfWeek.java` (MON, TUE, WED, THU, FRI, SAT, SUN)
+- ℹ️ `DayOfWeek`는 Java 표준 라이브러리 `java.time.DayOfWeek` 사용 (커스텀 Enum 불필요)
 
 ### 3.9 DDL 검증
 - [ ] Docker MySQL 기동 후 애플리케이션 실행
@@ -319,6 +319,17 @@ classDiagram
         APPROVED
         PUBLISHED
     }
+
+    class DayOfWeek {
+        <<java.time>>
+        MONDAY
+        TUESDAY
+        WEDNESDAY
+        THURSDAY
+        FRIDAY
+        SATURDAY
+        SUNDAY
+    }
     
     BaseEntity <|-- Owner
     BaseEntity <|-- Store
@@ -336,6 +347,7 @@ classDiagram
     
     Employee --> EmploymentType
     Schedule --> ScheduleStatus
+    AvailabilitySubmission --> DayOfWeek : uses java.time
 ```
 
 ---
@@ -606,13 +618,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
 ### 10.1 docker-compose.yml
 
-```yaml
-version: '3.8'
+> ⚠️ `version` 키는 Docker Compose V2에서 deprecated되어 제거되었습니다.
 
+```yaml
 services:
   mysql:
     image: mysql:8.0
     container_name: scon-mysql
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-scon_db}
@@ -625,6 +639,11 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   mysql-data:
@@ -632,14 +651,17 @@ volumes:
 
 ### 10.2 application-local.yml
 
+> ⚠️ **보안 주의**: 민감한 정보(비밀번호 등)는 환경변수로 관리합니다. 하드코딩 금지!
+
 ```yaml
 # MySQL Local Development Configuration
+# 민감한 정보는 환경변수 또는 .env 파일에서 로드
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/scon_db?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:scon_db}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: scon
-    password: scon1234
+    username: ${MYSQL_USER:scon}
+    password: ${MYSQL_PASSWORD}
 
   jpa:
     hibernate:
@@ -655,14 +677,34 @@ logging:
     org.hibernate.SQL: DEBUG
 ```
 
+### 10.3 .env.example
+
+> `.env.example`은 버전 관리에 포함하고, 실제 `.env` 파일은 `.gitignore`에 추가합니다.
+
+```env
+# =============================================================================
+# SCON Backend - Local Development Environment Variables
+# =============================================================================
+# 이 파일을 복사하여 .env 파일을 생성하세요: cp .env.example .env
+# 실제 .env 파일은 절대 Git에 커밋하지 마세요!
+
+# MySQL Database Configuration
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=scon_db
+MYSQL_USER=scon
+MYSQL_PASSWORD=your_secure_password_here
+MYSQL_ROOT_PASSWORD=your_root_password_here
+```
+
 ---
 
 ## 11. 구현 순서 가이드
 
 | 순서 | 계층 | 작업 내용 |
 |------|------|----------|
-| 1 | **Infrastructure** | Docker Compose, application-local.yml 설정 |
-| 2 | **Enum** | EmploymentType, ScheduleStatus 정의 |
+| 1 | **Infrastructure** | Docker Compose, .env.example, application-local.yml 설정 |
+| 2 | **Enum** | EmploymentType, ScheduleStatus 정의 (`java.time.DayOfWeek` 표준 사용) |
 | 3 | **Entity** | Owner → Store → Employee → Schedule → Shift → AvailabilitySubmission 순서로 구현 |
 | 4 | **Repository** | 각 엔티티에 대한 JpaRepository 인터페이스 생성 |
 | 5 | **Validation** | Docker MySQL 기동 후 DDL 자동 생성 검증 |

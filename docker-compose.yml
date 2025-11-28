@@ -1,0 +1,33 @@
+# =============================================================================
+# SCON Backend - Docker Compose Configuration
+# =============================================================================
+# MySQL 8.x 로컬 개발 환경 구성
+# 사용법: docker-compose up -d
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: scon-mysql
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-scon_db}
+      MYSQL_USER: ${MYSQL_USER:-scon}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-scon1234}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:
+
