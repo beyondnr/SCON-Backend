@@ -1,9 +1,3 @@
----
-title: "[REQ-FUNC-001~003] 온보딩 및 매장/직원 관리 API 구현"
-labels: ["feature", "api", "onboarding", "security"]
-assignees: []
----
-
 ## 1. 목적
 사장님 회원가입(온보딩), 매장 생성, 직원 관리를 위한 REST API를 구현한다.
 SRS의 ST-Story-2 (1클릭 스케줄 승인)의 선행 요구사항을 충족한다.
@@ -146,12 +140,12 @@ Then
 
 ### 7.1 환경변수 관리
 
-| 변수명 | 용도 | 보안 등급 | 예시 값 |
-|--------|------|-----------|---------|
-| `JWT_SECRET_KEY` | JWT 서명 키 | 🔴 Critical | (256bit 이상 랜덤 문자열) |
-| `JWT_ACCESS_EXPIRATION` | Access Token 만료 (ms) | Normal | `1800000` (30분) |
-| `JWT_REFRESH_EXPIRATION` | Refresh Token 만료 (ms) | Normal | `604800000` (7일) |
-| `ENCRYPTION_KEY` | PII 암호화 키 | 🔴 Critical | (256bit AES 키) |
+| 변수명 | 용도 | 보안 등급 |
+|--------|------|-----------|
+| `JWT_SECRET_KEY` | JWT 서명 키 | 🔴 Critical |
+| `JWT_ACCESS_EXPIRATION` | Access Token 만료 (ms) | Normal |
+| `JWT_REFRESH_EXPIRATION` | Refresh Token 만료 (ms) | Normal |
+| `ENCRYPTION_KEY` | PII 암호화 키 | 🔴 Critical |
 
 ### 7.2 암호화 스펙
 
@@ -160,7 +154,6 @@ Then
 | **비밀번호 해시** | BCrypt (cost factor: 12) |
 | **PII 암호화** | AES-256-GCM |
 | **대상 필드** | `Employee.phone` |
-| **키 관리** | 환경변수 (v1.0), Secrets Manager (v1.1+) |
 
 ### 7.3 JWT 스펙
 
@@ -169,7 +162,6 @@ Then
 | **알고리즘** | HS256 (대칭키) |
 | **Access Token 만료** | 30분 |
 | **Refresh Token 만료** | 7일 |
-| **Payload 필드** | `sub` (ownerId), `email`, `iat`, `exp` |
 
 ---
 
@@ -179,80 +171,16 @@ Then
 |----|--------------|-------------|------|
 | AC-001 | TC-AUTH-001 | 통합 | 회원가입 성공 |
 | AC-001 | TC-AUTH-002 | 단위 | 비밀번호 BCrypt 해시 검증 |
-| AC-001 | TC-AUTH-003 | 통합 | 중복 이메일 가입 실패 |
 | AC-002 | TC-AUTH-004 | 통합 | 로그인 성공 + JWT 발급 |
-| AC-002 | TC-AUTH-005 | 통합 | 잘못된 비밀번호 로그인 실패 |
 | AC-003 | TC-STORE-001 | 통합 | 매장 생성 API |
-| AC-003 | TC-STORE-002 | 통합 | 매장 조회 API |
 | AC-003 | TC-STORE-003 | 성능 | 매장 조회 p95 ≤ 0.8s |
 | AC-004 | TC-EMP-001 | 통합 | 직원 등록 API |
 | AC-004 | TC-EMP-002 | 보안 | PII 암호화 저장 검증 |
-| AC-004 | TC-EMP-003 | 보안 | PII 복호화 응답 검증 |
 | AC-005 | TC-ONBOARD-001 | E2E | 온보딩 플로우 전체 |
-| AC-005 | TC-ONBOARD-002 | 통합 | Draft 스케줄 자동 생성 |
 
 ---
 
-## 9. API 명세 (요약)
-
-### 9.1 인증 API
-
-| Method | Path | 인증 | 설명 |
-|--------|------|------|------|
-| POST | `/api/v1/auth/signup` | 공개 | 회원가입 |
-| POST | `/api/v1/auth/login` | 공개 | 로그인 (JWT 발급) |
-| POST | `/api/v1/auth/refresh` | Refresh Token | 토큰 갱신 |
-
-### 9.2 매장 API
-
-| Method | Path | 인증 | 설명 |
-|--------|------|------|------|
-| POST | `/api/v1/stores` | JWT | 매장 생성 |
-| GET | `/api/v1/stores` | JWT | 내 매장 목록 |
-| GET | `/api/v1/stores/{id}` | JWT | 매장 상세 |
-| PUT | `/api/v1/stores/{id}` | JWT | 매장 수정 |
-
-### 9.3 직원 API
-
-| Method | Path | 인증 | 설명 |
-|--------|------|------|------|
-| POST | `/api/v1/stores/{storeId}/employees` | JWT | 직원 등록 |
-| GET | `/api/v1/stores/{storeId}/employees` | JWT | 직원 목록 |
-| GET | `/api/v1/employees/{id}` | JWT | 직원 상세 |
-| PUT | `/api/v1/employees/{id}` | JWT | 직원 수정 |
-| DELETE | `/api/v1/employees/{id}` | JWT | 직원 삭제 |
-
-### 9.4 온보딩 API
-
-| Method | Path | 인증 | 설명 |
-|--------|------|------|------|
-| POST | `/api/v1/onboarding/complete` | JWT | 온보딩 완료 (첫 스케줄 생성) |
-
----
-
-## 10. 기술 스택
-
-| 항목 | 스펙 |
-|------|------|
-| **Java** | 21 (LTS) |
-| **Spring Boot** | 3.3.5 |
-| **Spring Security** | 6.x |
-| **JWT 라이브러리** | jjwt 0.12.x |
-| **암호화** | Java Cryptography Extension (JCE) |
-
----
-
-## 11. 참고 자료
-
-| 문서 | 경로 |
-|------|------|
-| SRS 문서 | `docs/GPT-SRS_v0.2.md` |
-| 기능 요구사항 상세 | `tasks/functional/REQ-FUNC-001-003.md` |
-| ERD | `tasks/github-issues/issue-002-SCON-ENV-002.md` §6 |
-
----
-
-## 12. 선행 조건 (Dependencies)
+## 9. 선행 조건 (Dependencies)
 
 - [x] SCON-ENV-001: 프로젝트 초기화 완료
 - [x] SCON-ENV-002: 데이터베이스 스키마 완료 (Owner, Store, Employee 엔티티)

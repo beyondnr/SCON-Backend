@@ -40,3 +40,15 @@ out/
 .env
 .env.local
 .env.*.local
+*.env
+
+### Security/Keys ###
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+
+### Local Storage ###
+storage/
+uploads/

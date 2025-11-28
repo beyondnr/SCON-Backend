@@ -1,18 +1,27 @@
 # =============================================================================
-# SCON Backend - Local MySQL Development Configuration
+# SCON Backend - Local Development Configuration
 # =============================================================================
 # 민감한 정보는 환경변수 또는 .env 파일에서 로드합니다.
 # 사용법: ./gradlew bootRun --args='--spring.profiles.active=local'
+#
+# .env 파일 로드 방법:
+#   1. .env.example을 복사하여 .env 생성
+#   2. docker-compose up -d (MySQL 기동)
+#   3. ./gradlew bootRun --args='--spring.profiles.active=local'
 
 spring:
+  # ─────────────────────────────────────────────────────────────────────────
   # MySQL Database Configuration
+  # ─────────────────────────────────────────────────────────────────────────
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3307}/${MYSQL_DATABASE:scon_db}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${MYSQL_USER:scon}
     password: ${MYSQL_PASSWORD:scon1234}
 
+  # ─────────────────────────────────────────────────────────────────────────
   # JPA Configuration for Local Development
+  # ─────────────────────────────────────────────────────────────────────────
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,9 +31,90 @@ spring:
       hibernate:
         format_sql: true
 
-# Logging - Verbose SQL logging for development
+# =============================================================================
+# Logging - Verbose logging for development
+# =============================================================================
 logging:
   level:
+    root: INFO
+    vibe.scon: DEBUG
+    # SQL 로깅
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # HTTP 클라이언트 로깅 (AI API 호출 디버깅)
+    org.springframework.web.client: DEBUG
 
+# =============================================================================
+# Local Development Overrides
+# =============================================================================
+app:
+  # ─────────────────────────────────────────────────────────────────────────
+  # JWT - 로컬 개발용 기본값 (프로덕션에서는 반드시 환경변수 사용)
+  # ─────────────────────────────────────────────────────────────────────────
+  jwt:
+    secret: ${JWT_SECRET_KEY:local-dev-jwt-secret-key-for-testing-only-32chars}
+    access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Encryption - 로컬 개발용 기본값
+  # ─────────────────────────────────────────────────────────────────────────
+  encryption:
+    key: ${ENCRYPTION_KEY:local-dev-aes-key-for-testing-32c}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI Model - 로컬 개발 설정
+  # ─────────────────────────────────────────────────────────────────────────
+  ai:
+    # OpenAI 설정 (.env에서 OPENAI_API_KEY 필수)
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-3.5-turbo}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      max-tokens: ${OPENAI_MAX_TOKENS:1000}
+      temperature: ${OPENAI_TEMPERATURE:0.7}
+
+    # Gemini 설정 (.env에서 GEMINI_API_KEY 필수)
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-pro}
+
+    # LangChain 마이크로서비스 (로컬 Python 서비스)
+    langchain:
+      service-url: ${LANGCHAIN_SERVICE_URL:http://localhost:8000}
+      api-key: ${LANGCHAIN_SERVICE_API_KEY:local-internal-key}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # External Services - 로컬에서는 Mock 또는 비활성화
+  # ─────────────────────────────────────────────────────────────────────────
+  notification:
+    # 로컬에서는 실제 알림 대신 로그 출력
+    mock-enabled: true
+    kakao:
+      api-key: ${KAKAO_API_KEY:}
+      sender-key: ${KAKAO_SENDER_KEY:}
+    sms:
+      api-key: ${SMS_API_KEY:}
+      sender-number: ${SMS_SENDER_NUMBER:}
+
+  storage:
+    # 로컬에서는 파일시스템 사용 가능
+    type: ${STORAGE_TYPE:local}
+    local:
+      base-path: ${LOCAL_STORAGE_PATH:./storage}
+    aws:
+      access-key: ${AWS_ACCESS_KEY:}
+      secret-key: ${AWS_SECRET_KEY:}
+      region: ${AWS_REGION:ap-northeast-2}
+      s3-bucket: ${S3_BUCKET_NAME:scon-evidence-dev}
+
+# =============================================================================
+# 환경변수 검증 설정
+# =============================================================================
+environment:
+  validation:
+    # 로컬 개발에서는 AI API 키 없어도 앱 시작 허용
+    strict-mode: false
+    # 필수 환경변수 목록 (strict-mode: true일 때만 검증)
+    required-variables:
+      - MYSQL_PASSWORD

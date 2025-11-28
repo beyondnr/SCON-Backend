@@ -8,7 +8,7 @@ spring:
 
   # Default Profile
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   # JPA Common Settings
   jpa:
@@ -28,5 +28,63 @@ server:
 logging:
   level:
     root: INFO
-    vibe.scon: DEBUG
+    vibe.scon: ${LOG_LEVEL:DEBUG}
 
+# =============================================================================
+# Application Custom Properties
+# =============================================================================
+app:
+  # ─────────────────────────────────────────────────────────────────────────
+  # JWT Configuration
+  # ─────────────────────────────────────────────────────────────────────────
+  jwt:
+    secret: ${JWT_SECRET_KEY:default-dev-secret-key-min-32-chars}
+    access-expiration: ${JWT_ACCESS_EXPIRATION:1800000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Encryption Configuration (PII 암호화)
+  # ─────────────────────────────────────────────────────────────────────────
+  encryption:
+    key: ${ENCRYPTION_KEY:default-dev-encryption-key-32ch}
+    algorithm: AES/GCM/NoPadding
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI Model Configuration
+  # ─────────────────────────────────────────────────────────────────────────
+  ai:
+    # OpenAI
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-4}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      max-tokens: ${OPENAI_MAX_TOKENS:2000}
+      temperature: ${OPENAI_TEMPERATURE:0.7}
+
+    # Google Gemini
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-pro}
+
+    # LangChain Python Service
+    langchain:
+      service-url: ${LANGCHAIN_SERVICE_URL:http://localhost:8000}
+      api-key: ${LANGCHAIN_SERVICE_API_KEY:}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # External Services Configuration
+  # ─────────────────────────────────────────────────────────────────────────
+  notification:
+    kakao:
+      api-key: ${KAKAO_API_KEY:}
+      sender-key: ${KAKAO_SENDER_KEY:}
+    sms:
+      api-key: ${SMS_API_KEY:}
+      sender-number: ${SMS_SENDER_NUMBER:}
+
+  storage:
+    aws:
+      access-key: ${AWS_ACCESS_KEY:}
+      secret-key: ${AWS_SECRET_KEY:}
+      region: ${AWS_REGION:ap-northeast-2}
+      s3-bucket: ${S3_BUCKET_NAME:scon-evidence}

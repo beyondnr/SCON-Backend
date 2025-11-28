@@ -56,64 +56,201 @@ SCON은 다음과 같은 핵심 가치를 제공합니다:
 
 ```text
 src/main/java/vibe/scon/scon_backend
-├── config          # Spring Configuration
-├── controller      # REST Controllers
-├── service         # Business Logic
-├── repository      # Data Access Layer (JPA)
-├── entity          # JPA Entities (Domain)
-├── dto             # Data Transfer Objects
-├── exception       # Global Exception Handling
-└── util            # Utility Classes
+├── config/             # Spring Configuration
+│   └── properties/     # @ConfigurationProperties 클래스
+├── controller/         # REST Controllers
+├── service/            # Business Logic
+├── repository/         # Data Access Layer (JPA)
+├── entity/             # JPA Entities (Domain)
+│   └── enums/          # Enum 타입 정의
+├── dto/                # Data Transfer Objects
+├── exception/          # Global Exception Handling
+└── util/               # Utility Classes
 ```
+
+---
+
+## 🔐 Security & Environment Management
+
+### 보안 관리 방침
+
+SCON 백엔드는 민감한 정보를 안전하게 관리하기 위해 다음과 같은 보안 체계를 적용합니다.
+
+#### 환경변수 카테고리
+
+| 카테고리 | 환경변수 | 보안 등급 | 설명 |
+|----------|----------|-----------|------|
+| **Database** | `MYSQL_*` | 🔴 Critical | MySQL 접속 정보 |
+| **JWT** | `JWT_SECRET_KEY` | 🔴 Critical | 인증 토큰 서명 키 (최소 32자) |
+| **Encryption** | `ENCRYPTION_KEY` | 🔴 Critical | PII 암호화 키 (AES-256) |
+| **AI APIs** | `OPENAI_API_KEY`, `GEMINI_API_KEY` | 🔴 Critical | AI 모델 API 키 |
+| **Notification** | `KAKAO_API_KEY`, `SMS_API_KEY` | 🔴 Critical | 알림 서비스 API 키 |
+| **Storage** | `AWS_*` | 🔴 Critical | AWS S3 접근 자격증명 |
+
+#### 암호화 스펙
+
+| 항목 | 스펙 | 용도 |
+|------|------|------|
+| **비밀번호 해시** | BCrypt (cost factor: 12) | Owner 비밀번호 저장 |
+| **PII 암호화** | AES-256-GCM | Employee 전화번호 등 민감정보 |
+| **JWT 서명** | HS256 | Access/Refresh 토큰 |
+| **전송 암호화** | TLS 1.3 (목표) | 모든 외부 통신 |
+
+#### 프로파일별 보안 정책
+
+| 프로파일 | 환경변수 누락 시 | 기본값 허용 | 설명 |
+|----------|------------------|-------------|------|
+| `local` | ⚠️ 경고 후 계속 | ✅ 허용 | 로컬 개발용 |
+| `dev` | ⚠️ 경고 후 계속 | ✅ 허용 | 개발 서버 |
+| `staging` | ❌ 앱 시작 차단 | ❌ 불허 | 스테이징 환경 |
+| `prod` | ❌ 앱 시작 차단 | ❌ 불허 | 프로덕션 환경 |
+
+#### 환경변수 검증
+
+앱 시작 시 `EnvironmentValidator` 컴포넌트가 필수 환경변수를 자동 검증합니다:
+
+```
+========================================
+  Environment Validation
+  Active Profile: local
+========================================
+  ✓ JWT_SECRET_KEY: configured (52 chars)
+  ✓ ENCRYPTION_KEY: configured (36 chars)
+  ✓ OPENAI_API_KEY: configured (model: gpt-3.5-turbo)
+  ○ GEMINI_API_KEY: not configured (optional)
+  ○ Storage: local mode (path: ./storage)
+----------------------------------------
+  ✓ All required environment variables are configured
+========================================
+```
+
+### Git에서 제외되는 파일
+
+다음 파일들은 `.gitignore`에 의해 Git 추적에서 제외됩니다:
+
+```
+.env              # 환경변수 파일
+.env.local        # 로컬 환경변수
+*.key             # 개인키 파일
+*.pem             # 인증서 파일
+secrets/          # 시크릿 디렉토리
+storage/          # 로컬 스토리지
+```
+
+---
 
 ## ⚡ Getting Started
 
 ### Prerequisites
 - JDK 21 이상
-- MySQL 8.x
+- Docker & Docker Compose
 - Git
 
-### Installation & Running
+### 1. Clone & Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd SCON-Backend
-   ```
+```bash
+# 저장소 클론
+git clone <repository-url>
+cd SCON-Backend
 
-2. **Database Setup**
-   - MySQL 데이터베이스를 생성합니다 (`scon_db` 등).
-   - `src/main/resources/application.properties` (또는 `application.yml`) 파일에서 DB 접속 정보를 수정합니다.
+# 환경변수 파일 생성
+cp .env.example .env
+```
 
-3. **Build**
-   ```bash
-   # Windows
-   ./gradlew build
+### 2. 환경변수 설정 (.env)
 
-   # macOS/Linux
-   ./gradlew build
-   ```
+`.env` 파일을 열어 실제 값으로 수정합니다:
 
-4. **Run**
-   ```bash
-   # Windows
-   ./gradlew bootRun
+```properties
+# =============================================================================
+# DATABASE (필수)
+# =============================================================================
+MYSQL_HOST=localhost
+MYSQL_PORT=3307
+MYSQL_DATABASE=scon_db
+MYSQL_USER=scon
+MYSQL_PASSWORD=your_secure_password    # 실제 비밀번호로 변경
 
-   # macOS/Linux
-   ./gradlew bootRun
-   ```
+# =============================================================================
+# SECURITY (프로덕션에서 필수)
+# =============================================================================
+# JWT 키 생성: openssl rand -base64 32
+JWT_SECRET_KEY=your_jwt_secret_key_min_32_characters
+
+# 암호화 키 생성: openssl rand -base64 32
+ENCRYPTION_KEY=your_aes256_encryption_key
+
+# =============================================================================
+# AI APIs (선택 - 로컬에서는 없어도 앱 시작 가능)
+# =============================================================================
+OPENAI_API_KEY=sk-your_openai_api_key
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+### 3. Database Setup (Docker)
+
+```bash
+# MySQL 컨테이너 시작
+docker-compose up -d
+
+# 상태 확인
+docker-compose ps
+```
+
+### 4. Build & Run
+
+```bash
+# 빌드
+./gradlew build
+
+# 로컬 프로파일로 실행
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+### 5. Health Check
+
+```bash
+# API 헬스 체크
+curl http://localhost:8080/api/health
+```
+
+---
 
 ## 📚 Documentation
+
 더 자세한 설계 및 요구사항 문서는 `docs/` 디렉토리를 참고해 주세요.
-- `docs/GPT-SRS_v0.2.md`: 소프트웨어 요구사항 명세서 (SRS)
-- `docs/GPT-PRD.md`: 제품 요구사항 문서 (PRD)
+
+| 문서 | 설명 |
+|------|------|
+| `docs/GPT-SRS_v0.2.md` | 소프트웨어 요구사항 명세서 (SRS) |
+| `docs/GPT-PRD.md` | 제품 요구사항 문서 (PRD) |
+| `docs/WBS_DAG.md` | 작업 분해 구조 |
+
+### 환경변수 참조
+
+| 파일 | 설명 |
+|------|------|
+| `.env.example` | 환경변수 템플릿 (모든 키 목록) |
+| `application.yml` | Spring 공통 설정 |
+| `application-local.yml` | 로컬 개발 설정 |
+
+---
 
 ## 🤝 Contribution
+
 1. Issue를 생성하여 논의합니다.
 2. Feature Branch(`feature/issue-number-name`)를 생성합니다.
 3. 변경 사항을 커밋하고 Push합니다.
 4. Pull Request를 생성합니다.
 
----
-Copyright © 2025 SCON Team. All Rights Reserved.
+### 보안 관련 기여 시 주의사항
 
+- **절대 `.env` 파일이나 실제 API 키를 커밋하지 마세요**
+- PR 전 `git diff --cached`로 민감 정보 유출 여부를 확인하세요
+- 새로운 환경변수 추가 시 `.env.example`에 템플릿을 함께 추가하세요
+
+---
+
+## 📄 License
+
+Copyright © 2025 SCON Team. All Rights Reserved.
