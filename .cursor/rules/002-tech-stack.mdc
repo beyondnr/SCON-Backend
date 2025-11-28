@@ -7,7 +7,7 @@ alwaysApply: true
 Referenced in: [001-project-overview.mdc](001-project-overview.mdc)
 
 ## Backend Framework & Language
-- **Language**: Java 17 (LTS)
+- **Language**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.x
 - **Build Tool**: Gradle (Kotlin DSL or Groovy) or Maven (Default to Gradle if not specified)
 

@@ -1,0 +1,32 @@
+# =============================================================================
+# SCON Backend - Common Configuration
+# =============================================================================
+
+spring:
+  application:
+    name: scon-backend
+
+  # Default Profile
+  profiles:
+    active: dev
+
+  # JPA Common Settings
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# Logging Common Settings
+logging:
+  level:
+    root: INFO
+    vibe.scon: DEBUG
+

@@ -40,7 +40,7 @@ SCON은 다음과 같은 핵심 가치를 제공합니다:
 ## 🛠 Tech Stack
 
 ### Backend Core
-- **Language**: Java 17 (LTS)
+- **Language**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.x
 - **Build Tool**: Gradle
 - **Database**: MySQL 8.x (InnoDB)
@@ -69,7 +69,7 @@ src/main/java/vibe/scon/scon_backend
 ## ⚡ Getting Started
 
 ### Prerequisites
-- JDK 17 이상
+- JDK 21 이상
 - MySQL 8.x
 - Git
 

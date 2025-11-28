@@ -1,0 +1,31 @@
+# =============================================================================
+# SCON Backend - Production Environment Configuration
+# =============================================================================
+
+spring:
+  # MySQL Database for Production
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:scon_db}?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # JPA Production Settings
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+# Logging - Production level
+logging:
+  level:
+    root: WARN
+    vibe.scon: INFO
+    org.hibernate.SQL: WARN
+
