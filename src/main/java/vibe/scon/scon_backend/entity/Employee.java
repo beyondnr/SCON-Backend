@@ -116,5 +116,22 @@ public class Employee extends BaseEntity {
         this.employmentType = employmentType;
         this.store = store;
     }
+
+    /**
+     * 직원 정보 업데이트.
+     * 
+     * <p>JPA dirty checking을 통해 변경사항을 자동 반영합니다.</p>
+     * 
+     * @param name 직원 이름
+     * @param phone 연락처 (암호화된 값)
+     * @param hourlyWage 시급
+     * @param employmentType 고용 형태
+     */
+    public void update(String name, String phone, BigDecimal hourlyWage, EmploymentType employmentType) {
+        if (name != null) this.name = name;
+        if (phone != null) this.phone = phone;
+        if (hourlyWage != null) this.hourlyWage = hourlyWage;
+        if (employmentType != null) this.employmentType = employmentType;
+    }
 }
 

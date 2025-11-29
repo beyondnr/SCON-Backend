@@ -46,7 +46,7 @@ app:
   # Encryption Configuration (PII 암호화)
   # ─────────────────────────────────────────────────────────────────────────
   encryption:
-    key: ${ENCRYPTION_KEY:default-dev-encryption-key-32ch}
+    key: ${ENCRYPTION_KEY:dev-aes-encryption-key-32-byte!}
     algorithm: AES/GCM/NoPadding
 
   # ─────────────────────────────────────────────────────────────────────────

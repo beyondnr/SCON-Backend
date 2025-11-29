@@ -133,5 +133,25 @@ public class Store extends BaseEntity {
         schedules.add(schedule);
         schedule.setStore(this);
     }
+
+    /**
+     * 매장 정보 업데이트.
+     * 
+     * <p>JPA dirty checking을 통해 변경사항을 자동 반영합니다.</p>
+     * 
+     * @param name 매장명
+     * @param businessType 업종
+     * @param address 주소
+     * @param openTime 영업 시작 시간
+     * @param closeTime 영업 종료 시간
+     */
+    public void update(String name, String businessType, String address,
+                       LocalTime openTime, LocalTime closeTime) {
+        if (name != null) this.name = name;
+        if (businessType != null) this.businessType = businessType;
+        if (address != null) this.address = address;
+        if (openTime != null) this.openTime = openTime;
+        if (closeTime != null) this.closeTime = closeTime;
+    }
 }
 
