@@ -23,14 +23,16 @@ SRS의 ST-Story-2 (1클릭 스케줄 승인)의 선행 요구사항을 충족한
 ## 3. 상세 작업
 
 ### 3.1 인프라/보안 (선행 작업)
-- [ ] `.env.example`에 JWT/암호화 관련 환경변수 추가
+- [x] `.env.example`에 JWT/암호화 관련 환경변수 추가 *(SCON-ENV-002에서 완료)*
+- [ ] `build.gradle`에 Spring Security 의존성 추가
+- [ ] `build.gradle`에 JWT (jjwt 0.12.x) 의존성 추가
 - [ ] `EncryptionUtil.java` 구현 (AES-256-GCM)
 - [ ] `JwtTokenProvider.java` 구현
 - [ ] Spring Security 기본 설정 (`SecurityConfig.java`)
 
 ### 3.2 Owner 엔티티 확장
-- [ ] `Owner.password` 필드 추가 (BCrypt 해시 저장)
-- [ ] `OwnerRepository`에 인증 관련 메서드 추가
+- [x] `Owner.password` 필드 추가 (BCrypt 해시 저장) *(SCON-ENV-002에서 완료)*
+- [x] `OwnerRepository`에 인증 관련 메서드 추가 (`findByEmail`, `existsByEmail`) *(SCON-ENV-002에서 완료)*
 
 ### 3.3 인증 API (REQ-FUNC-001)
 - [ ] `AuthController.java` 구현
@@ -101,7 +103,7 @@ Then
 ### AC-004: 직원 등록 및 PII 암호화 (REQ-FUNC-003)
 ```
 Given 사장님이 직원 추가 화면을 열고
-When 필수 정보(이름, 계약유형, 시급, 연락처)를 입력·저장하면
+When 필수 정보(이름, 고용형태, 시급, 연락처)를 입력·저장하면
 Then
   - 고유한 Employee ID가 생성되어야 한다
   - Store와 FK로 연결되어야 한다
@@ -175,21 +177,61 @@ Then
 
 ## 8. 테스트 케이스 추적성
 
+### 8.1 인증 API 테스트 (REQ-FUNC-001)
+
 | AC | Test Case ID | 테스트 유형 | 설명 |
 |----|--------------|-------------|------|
 | AC-001 | TC-AUTH-001 | 통합 | 회원가입 성공 |
 | AC-001 | TC-AUTH-002 | 단위 | 비밀번호 BCrypt 해시 검증 |
-| AC-001 | TC-AUTH-003 | 통합 | 중복 이메일 가입 실패 |
+| AC-001 | TC-AUTH-003 | 통합 | 중복 이메일 가입 실패 (409) |
 | AC-002 | TC-AUTH-004 | 통합 | 로그인 성공 + JWT 발급 |
-| AC-002 | TC-AUTH-005 | 통합 | 잘못된 비밀번호 로그인 실패 |
+| AC-002 | TC-AUTH-005 | 통합 | 잘못된 비밀번호 로그인 실패 (401) |
+| AC-002 | TC-AUTH-006 | 통합 | 토큰 갱신 API 성공 |
+| AC-002 | TC-AUTH-007 | 통합 | 만료된 Access Token 처리 (401) |
+| AC-002 | TC-AUTH-008 | 통합 | 유효하지 않은 토큰 처리 (401) |
+| AC-002 | TC-AUTH-009 | 통합 | 만료된 Refresh Token 처리 (401) |
+
+### 8.2 매장 API 테스트 (REQ-FUNC-002)
+
+| AC | Test Case ID | 테스트 유형 | 설명 |
+|----|--------------|-------------|------|
 | AC-003 | TC-STORE-001 | 통합 | 매장 생성 API |
 | AC-003 | TC-STORE-002 | 통합 | 매장 조회 API |
-| AC-003 | TC-STORE-003 | 성능 | 매장 조회 p95 ≤ 0.8s |
+| AC-003 | TC-STORE-003 | 성능 | 매장 조회 p95 ≤ 0.8s (REQ-NF-001) |
+| AC-003 | TC-STORE-004 | 통합 | 매장 수정 API |
+| AC-003 | TC-STORE-005 | 통합 | 내 매장 목록 조회 API |
+| AC-003 | TC-STORE-006 | 보안 | 타 사용자 매장 접근 차단 (403) |
+| AC-003 | TC-STORE-007 | 통합 | 존재하지 않는 매장 조회 (404) |
+
+### 8.3 직원 API 테스트 (REQ-FUNC-003)
+
+| AC | Test Case ID | 테스트 유형 | 설명 |
+|----|--------------|-------------|------|
 | AC-004 | TC-EMP-001 | 통합 | 직원 등록 API |
-| AC-004 | TC-EMP-002 | 보안 | PII 암호화 저장 검증 |
+| AC-004 | TC-EMP-002 | 보안 | PII 암호화 저장 검증 (REQ-NF-007) |
 | AC-004 | TC-EMP-003 | 보안 | PII 복호화 응답 검증 |
+| AC-004 | TC-EMP-004 | 통합 | 직원 수정 API |
+| AC-004 | TC-EMP-005 | 통합 | 직원 삭제 (Soft Delete) |
+| AC-004 | TC-EMP-006 | 통합 | 직원 목록 조회 API |
+| AC-004 | TC-EMP-007 | 보안 | 타 사용자 직원 접근 차단 (403) |
+| AC-004 | TC-EMP-008 | 통합 | 존재하지 않는 직원 조회 (404) |
+
+### 8.4 온보딩 API 테스트 (REQ-FUNC-001)
+
+| AC | Test Case ID | 테스트 유형 | 설명 |
+|----|--------------|-------------|------|
 | AC-005 | TC-ONBOARD-001 | E2E | 온보딩 플로우 전체 |
 | AC-005 | TC-ONBOARD-002 | 통합 | Draft 스케줄 자동 생성 |
+| AC-005 | TC-ONBOARD-003 | 성능 | 온보딩 완료 시간 측정 (KPI: ≤10분) |
+
+### 8.5 NFR 검증 테스트
+
+| NFR ID | Test Case ID | 테스트 유형 | 설명 |
+|--------|--------------|-------------|------|
+| REQ-NF-001 | TC-NFR-001 | 성능 | API 응답 시간 p95 ≤ 0.8s |
+| REQ-NF-007 | TC-NFR-002 | 보안 | AES-256 암호화 저장 검증 |
+| REQ-NF-008 | TC-NFR-003 | 보안 | TLS 구성 검증 (HTTPS 강제) |
+| REQ-NF-010 | TC-NFR-004 | 스키마 | PII 필드 8개 이하 검증 |
 
 ---
 

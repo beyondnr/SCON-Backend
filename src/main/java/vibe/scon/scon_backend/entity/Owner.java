@@ -22,7 +22,15 @@ import java.util.List;
  *   <li>유니크 제약: {@code email}</li>
  * </ul>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-001} - 3단계 온보딩 마법사 (회원가입)</li>
+ *   <li>{@code SRS §6.2.0} - ERD: OWNER 엔티티</li>
+ * </ul>
+ * 
  * @see Store
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.0 ERD</a>
+ * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003: 온보딩 API</a>
  */
 @Entity
 @Table(name = "owners")

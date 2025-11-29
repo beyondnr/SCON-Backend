@@ -3,11 +3,12 @@ title: "[SCON-ENV-002] 데이터베이스 스키마 설계 및 설정"
 labels: ["database", "schema", "mysql"]
 assignees: []
 ---
-
 ## 1. 목적
+
 핵심 도메인 엔터티를 위한 초기 MySQL 데이터베이스 스키마를 설계하고 구현한다.
 
 ## 2. 범위
+
 - `Owner`, `Store`, `Employee`, `Schedule`, `Shift`, `AvailabilitySubmission` 엔터티 정의
 - Docker Compose를 통한 MySQL 로컬 개발 환경 구성
 - 엔터티 간 관계(OneToMany, ManyToOne) 및 제약조건 설정
@@ -16,51 +17,63 @@ assignees: []
 ## 3. 상세 작업
 
 ### 3.1 개발 환경 구성
-- [ ] Docker Compose로 MySQL 8.x 로컬 환경 구성 (`docker-compose.yml`)
-- [ ] `application-local.yml` 프로파일 추가 (MySQL 로컬 연결용)
-- [ ] `.env.example` 파일 생성 (환경변수 템플릿)
+
+- [x] Docker Compose로 MySQL 8.x 로컬 환경 구성 (`docker-compose.yml`)
+- [x] `application-local.yml` 프로파일 추가 (MySQL 로컬 연결용)
+- [x] `.env.example` 파일 생성 (환경변수 템플릿)
 
 ### 3.2 Owner 엔티티
-- [ ] `Owner.java` 엔티티 클래스 생성
-- [ ] `OwnerRepository.java` 인터페이스 생성
+
+- [x] `Owner.java` 엔티티 클래스 생성
+- [x] `OwnerRepository.java` 인터페이스 생성
 
 ### 3.3 Store 엔티티
-- [ ] `Store.java` 엔티티 클래스 생성
-- [ ] `StoreRepository.java` 인터페이스 생성
+
+- [x] `Store.java` 엔티티 클래스 생성
+- [x] `StoreRepository.java` 인터페이스 생성
 
 ### 3.4 Employee 엔티티
-- [ ] `Employee.java` 엔티티 클래스 생성
-- [ ] `EmployeeRepository.java` 인터페이스 생성
+
+- [x] `Employee.java` 엔티티 클래스 생성
+- [x] `EmployeeRepository.java` 인터페이스 생성
 
 ### 3.5 Schedule 엔티티
-- [ ] `Schedule.java` 엔티티 클래스 생성
-- [ ] `ScheduleRepository.java` 인터페이스 생성
+
+- [x] `Schedule.java` 엔티티 클래스 생성
+- [x] `ScheduleRepository.java` 인터페이스 생성
 
 ### 3.6 Shift 엔티티
-- [ ] `Shift.java` 엔티티 클래스 생성
-- [ ] `ShiftRepository.java` 인터페이스 생성
+
+- [x] `Shift.java` 엔티티 클래스 생성
+- [x] `ShiftRepository.java` 인터페이스 생성
 
 ### 3.7 AvailabilitySubmission 엔티티
-- [ ] `AvailabilitySubmission.java` 엔티티 클래스 생성
-- [ ] `AvailabilitySubmissionRepository.java` 인터페이스 생성
+
+- [x] `AvailabilitySubmission.java` 엔티티 클래스 생성
+- [x] `AvailabilitySubmissionRepository.java` 인터페이스 생성
 
 ### 3.8 Enum 타입 정의
-- [ ] `EmploymentType.java` (FULL_TIME, PART_TIME)
-- [ ] `ScheduleStatus.java` (DRAFT, PENDING, APPROVED, PUBLISHED)
+
+- [x] `EmploymentType.java` (FULL_TIME, PART_TIME)
+- [x] `ScheduleStatus.java` (DRAFT, PENDING, APPROVED, PUBLISHED)
+
 - ℹ️ `DayOfWeek`는 Java 표준 라이브러리 `java.time.DayOfWeek` 사용 (커스텀 Enum 불필요)
 
 ### 3.9 DDL 검증
-- [ ] Docker MySQL 기동 후 애플리케이션 실행
-- [ ] `ddl-auto: update` 설정으로 테이블 자동 생성 확인
-- [ ] 생성된 스키마가 ERD와 일치하는지 검증
+
+- [x] Docker MySQL 기동 후 애플리케이션 실행
+- [x] `ddl-auto: update` 설정으로 테이블 자동 생성 확인
+- [x] 생성된 스키마가 ERD와 일치하는지 검증
 
 ## 4. 완료 조건 (Acceptance Criteria)
-- [ ] `docker-compose up -d` 명령으로 MySQL이 정상 기동되어야 한다.
-- [ ] `./gradlew bootRun --args='--spring.profiles.active=local'`로 앱 실행 시 DB 연결 성공해야 한다.
-- [ ] MySQL 스키마에 ERD와 일치하는 6개 테이블이 올바르게 생성되어야 한다.
-- [ ] H2 Console 또는 MySQL CLI로 테이블 구조 확인 가능해야 한다.
+
+- [x] `docker-compose up -d` 명령으로 MySQL이 정상 기동되어야 한다.
+- [x] `./gradlew bootRun --args='--spring.profiles.active=local'`로 앱 실행 시 DB 연결 성공해야 한다.
+- [x] MySQL 스키마에 ERD와 일치하는 6개 테이블이 올바르게 생성되어야 한다.
+- [x] H2 Console 또는 MySQL CLI로 테이블 구조 확인 가능해야 한다.
 
 ## 5. 기술 스택
+
 - **Java**: 21 (LTS)
 - **Spring Boot**: 3.3.5
 - **Database**: MySQL 8.x (InnoDB)
@@ -81,82 +94,77 @@ erDiagram
         varchar password
         varchar name
         varchar phone
-        datetime created_at
-        datetime updated_at
+        datetime createdAt
+        datetime updatedAt
     }
-    
     STORE {
         bigint id PK
         varchar name
-        varchar business_type
+        varchar businessType
         varchar address
-        time open_time
-        time close_time
-        bigint owner_id FK
-        datetime created_at
-        datetime updated_at
+        time openTime
+        time closeTime
+        bigint ownerId FK
+        datetime createdAt
+        datetime updatedAt
     }
-    
     EMPLOYEE {
         bigint id PK
         varchar name
         varchar phone
-        decimal hourly_wage
-        varchar employment_type
-        bigint store_id FK
-        datetime created_at
-        datetime updated_at
+        decimal hourlyWage
+        varchar employmentType
+        bigint storeId FK
+        datetime createdAt
+        datetime updatedAt
     }
-    
     SCHEDULE {
         bigint id PK
-        date week_start_date
+        date weekStartDate
         varchar status
-        bigint store_id FK
-        datetime created_at
-        datetime updated_at
+        bigint storeId FK
+        datetime createdAt
+        datetime updatedAt
     }
-    
     SHIFT {
         bigint id PK
-        date work_date
-        time start_time
-        time end_time
-        bigint schedule_id FK
-        bigint employee_id FK
-        datetime created_at
-        datetime updated_at
+        date workDate
+        time startTime
+        time endTime
+        bigint scheduleId FK
+        bigint employeeId FK
+        datetime createdAt
+        datetime updatedAt
     }
-    
-    AVAILABILITY_SUBMISSION {
+    AvailabilitySubmission {
         bigint id PK
-        date week_start_date
-        varchar day_of_week
-        time start_time
-        time end_time
-        bigint employee_id FK
-        datetime created_at
-        datetime updated_at
+        date weekStartDate
+        varchar dayOfWeek
+        time startTime
+        time endTime
+        bigint employeeId FK
+        datetime createdAt
+        datetime updatedAt
     }
-    
+
     OWNER ||--o{ STORE : owns
     STORE ||--o{ EMPLOYEE : employs
     STORE ||--o{ SCHEDULE : has
     SCHEDULE ||--o{ SHIFT : contains
     EMPLOYEE ||--o{ SHIFT : works
-    EMPLOYEE ||--o{ AVAILABILITY_SUBMISSION : submits
+    EMPLOYEE ||--o{ AvailabilitySubmission : submits
 ```
 
 ### 6.2 엔티티 관계 요약
 
-| 관계 | 카디널리티 | 설명 |
-|------|-----------|------|
-| Owner → Store | 1:N | 한 사장이 여러 매장 소유 가능 |
-| Store → Employee | 1:N | 한 매장에 여러 직원 소속 |
-| Store → Schedule | 1:N | 한 매장에 여러 주차 스케줄 |
-| Schedule → Shift | 1:N | 한 스케줄에 여러 근무 시프트 |
-| Employee → Shift | 1:N | 한 직원이 여러 시프트 근무 |
-| Employee → AvailabilitySubmission | 1:N | 한 직원이 여러 가용시간 제출 |
+| 관계                               | 카디널리티 | 설명                          |
+| ---------------------------------- | ---------- | ----------------------------- |
+| Owner → Store                     | 1:N        | 한 사장이 여러 매장 소유 가능 |
+| Store → Employee                  | 1:N        | 한 매장에 여러 직원 소속      |
+| Store → Schedule                  | 1:N        | 한 매장에 여러 주차 스케줄    |
+| Schedule → Shift                  | 1:N        | 한 스케줄에 여러 근무 시프트  |
+| Employee → Shift                  | 1:N        | 한 직원이 여러 시프트 근무    |
+| Employee → AvailabilitySubmission | 1:N        | 한 직원이 여러 가용시간 제출  |
 
 ---
 
@@ -164,81 +172,81 @@ erDiagram
 
 ### 7.1 Owner (사장/운영자)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `email` | `VARCHAR(255)` | `UNIQUE, NOT NULL` | 로그인 이메일 |
-| `password` | `VARCHAR(255)` | `NOT NULL` | 암호화된 비밀번호 |
-| `name` | `VARCHAR(100)` | `NOT NULL` | 사장님 이름 |
-| `phone` | `VARCHAR(20)` | | 연락처 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명         | 타입             | 제약조건               | 설명              |
+| -------------- | ---------------- | ---------------------- | ----------------- |
+| `id`         | `BIGINT`       | `PK, AUTO_INCREMENT` | 기본키            |
+| `email`      | `VARCHAR(255)` | `UNIQUE, NOT NULL`   | 로그인 이메일     |
+| `password`   | `VARCHAR(255)` | `NOT NULL`           | 암호화된 비밀번호 |
+| `name`       | `VARCHAR(100)` | `NOT NULL`           | 사장님 이름       |
+| `phone`      | `VARCHAR(20)`  |                        | 연락처            |
+| `created_at` | `DATETIME`     | `NOT NULL`           | 생성일시          |
+| `updated_at` | `DATETIME`     | `NOT NULL`           | 수정일시          |
 
 ### 7.2 Store (매장)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `name` | `VARCHAR(100)` | `NOT NULL` | 매장명 |
-| `business_type` | `VARCHAR(50)` | | 업종 (베이커리, 카페 등) |
-| `address` | `VARCHAR(255)` | | 매장 주소 |
-| `open_time` | `TIME` | | 영업 시작 시간 |
-| `close_time` | `TIME` | | 영업 종료 시간 |
-| `owner_id` | `BIGINT` | `FK → Owner, NOT NULL` | 소유자 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명            | 타입             | 제약조건                  | 설명                     |
+| ----------------- | ---------------- | ------------------------- | ------------------------ |
+| `id`            | `BIGINT`       | `PK, AUTO_INCREMENT`    | 기본키                   |
+| `name`          | `VARCHAR(100)` | `NOT NULL`              | 매장명                   |
+| `business_type` | `VARCHAR(50)`  |                           | 업종 (베이커리, 카페 등) |
+| `address`       | `VARCHAR(255)` |                           | 매장 주소                |
+| `open_time`     | `TIME`         |                           | 영업 시작 시간           |
+| `close_time`    | `TIME`         |                           | 영업 종료 시간           |
+| `owner_id`      | `BIGINT`       | `FK → Owner, NOT NULL` | 소유자                   |
+| `created_at`    | `DATETIME`     | `NOT NULL`              | 생성일시                 |
+| `updated_at`    | `DATETIME`     | `NOT NULL`              | 수정일시                 |
 
 ### 7.3 Employee (직원)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `name` | `VARCHAR(100)` | `NOT NULL` | 직원 이름 |
-| `phone` | `VARCHAR(20)` | | 연락처 |
-| `hourly_wage` | `DECIMAL(10,2)` | | 시급 |
-| `employment_type` | `VARCHAR(20)` | `NOT NULL` | 고용형태 (FULL_TIME/PART_TIME) |
-| `store_id` | `BIGINT` | `FK → Store, NOT NULL` | 소속 매장 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명              | 타입              | 제약조건                  | 설명                           |
+| ------------------- | ----------------- | ------------------------- | ------------------------------ |
+| `id`              | `BIGINT`        | `PK, AUTO_INCREMENT`    | 기본키                         |
+| `name`            | `VARCHAR(100)`  | `NOT NULL`              | 직원 이름                      |
+| `phone`           | `VARCHAR(20)`   |                           | 연락처                         |
+| `hourly_wage`     | `DECIMAL(10,2)` |                           | 시급                           |
+| `employment_type` | `VARCHAR(20)`   | `NOT NULL`              | 고용형태 (FULL_TIME/PART_TIME) |
+| `store_id`        | `BIGINT`        | `FK → Store, NOT NULL` | 소속 매장                      |
+| `created_at`      | `DATETIME`      | `NOT NULL`              | 생성일시                       |
+| `updated_at`      | `DATETIME`      | `NOT NULL`              | 수정일시                       |
 
 ### 7.4 Schedule (스케줄)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `week_start_date` | `DATE` | `NOT NULL` | 주 시작일 (월요일) |
-| `status` | `VARCHAR(20)` | `NOT NULL` | 상태 (DRAFT/PENDING/APPROVED/PUBLISHED) |
-| `store_id` | `BIGINT` | `FK → Store, NOT NULL` | 매장 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명              | 타입            | 제약조건                  | 설명                                    |
+| ------------------- | --------------- | ------------------------- | --------------------------------------- |
+| `id`              | `BIGINT`      | `PK, AUTO_INCREMENT`    | 기본키                                  |
+| `week_start_date` | `DATE`        | `NOT NULL`              | 주 시작일 (월요일)                      |
+| `status`          | `VARCHAR(20)` | `NOT NULL`              | 상태 (DRAFT/PENDING/APPROVED/PUBLISHED) |
+| `store_id`        | `BIGINT`      | `FK → Store, NOT NULL` | 매장                                    |
+| `created_at`      | `DATETIME`    | `NOT NULL`              | 생성일시                                |
+| `updated_at`      | `DATETIME`    | `NOT NULL`              | 수정일시                                |
 
 **복합 유니크 제약**: `(store_id, week_start_date)` - 한 매장에 같은 주의 스케줄은 하나만
 
 ### 7.5 Shift (근무 시프트)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `work_date` | `DATE` | `NOT NULL` | 근무일 |
-| `start_time` | `TIME` | `NOT NULL` | 시작 시간 |
-| `end_time` | `TIME` | `NOT NULL` | 종료 시간 |
-| `schedule_id` | `BIGINT` | `FK → Schedule, NOT NULL` | 소속 스케줄 |
-| `employee_id` | `BIGINT` | `FK → Employee, NOT NULL` | 근무 직원 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명          | 타입         | 제약조건                     | 설명        |
+| --------------- | ------------ | ---------------------------- | ----------- |
+| `id`          | `BIGINT`   | `PK, AUTO_INCREMENT`       | 기본키      |
+| `work_date`   | `DATE`     | `NOT NULL`                 | 근무일      |
+| `start_time`  | `TIME`     | `NOT NULL`                 | 시작 시간   |
+| `end_time`    | `TIME`     | `NOT NULL`                 | 종료 시간   |
+| `schedule_id` | `BIGINT`   | `FK → Schedule, NOT NULL` | 소속 스케줄 |
+| `employee_id` | `BIGINT`   | `FK → Employee, NOT NULL` | 근무 직원   |
+| `created_at`  | `DATETIME` | `NOT NULL`                 | 생성일시    |
+| `updated_at`  | `DATETIME` | `NOT NULL`                 | 수정일시    |
 
 ### 7.6 AvailabilitySubmission (가용시간 제출)
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| `id` | `BIGINT` | `PK, AUTO_INCREMENT` | 기본키 |
-| `week_start_date` | `DATE` | `NOT NULL` | 주 시작일 |
-| `day_of_week` | `VARCHAR(10)` | `NOT NULL` | 요일 (MON~SUN) |
-| `start_time` | `TIME` | `NOT NULL` | 가용 시작 시간 |
-| `end_time` | `TIME` | `NOT NULL` | 가용 종료 시간 |
-| `employee_id` | `BIGINT` | `FK → Employee, NOT NULL` | 직원 |
-| `created_at` | `DATETIME` | `NOT NULL` | 생성일시 |
-| `updated_at` | `DATETIME` | `NOT NULL` | 수정일시 |
+| 컬럼명              | 타입            | 제약조건                     | 설명           |
+| ------------------- | --------------- | ---------------------------- | -------------- |
+| `id`              | `BIGINT`      | `PK, AUTO_INCREMENT`       | 기본키         |
+| `week_start_date` | `DATE`        | `NOT NULL`                 | 주 시작일      |
+| `day_of_week`     | `VARCHAR(10)` | `NOT NULL`                 | 요일 (MON~SUN) |
+| `start_time`      | `TIME`        | `NOT NULL`                 | 가용 시작 시간 |
+| `end_time`        | `TIME`        | `NOT NULL`                 | 가용 종료 시간 |
+| `employee_id`     | `BIGINT`      | `FK → Employee, NOT NULL` | 직원           |
+| `created_at`      | `DATETIME`    | `NOT NULL`                 | 생성일시       |
+| `updated_at`      | `DATETIME`    | `NOT NULL`                 | 수정일시       |
 
 ---
 
@@ -253,7 +261,7 @@ classDiagram
         -LocalDateTime createdAt
         -LocalDateTime updatedAt
     }
-    
+  
     class Owner {
         -String email
         -String password
@@ -261,7 +269,7 @@ classDiagram
         -String phone
         -List~Store~ stores
     }
-    
+  
     class Store {
         -String name
         -String businessType
@@ -272,7 +280,7 @@ classDiagram
         -List~Employee~ employees
         -List~Schedule~ schedules
     }
-    
+  
     class Employee {
         -String name
         -String phone
@@ -282,14 +290,14 @@ classDiagram
         -List~Shift~ shifts
         -List~AvailabilitySubmission~ availabilities
     }
-    
+  
     class Schedule {
         -LocalDate weekStartDate
         -ScheduleStatus status
         -Store store
         -List~Shift~ shifts
     }
-    
+  
     class Shift {
         -LocalDate workDate
         -LocalTime startTime
@@ -297,7 +305,7 @@ classDiagram
         -Schedule schedule
         -Employee employee
     }
-    
+  
     class AvailabilitySubmission {
         -LocalDate weekStartDate
         -DayOfWeek dayOfWeek
@@ -305,13 +313,13 @@ classDiagram
         -LocalTime endTime
         -Employee employee
     }
-    
+  
     class EmploymentType {
         <<enumeration>>
         FULL_TIME
         PART_TIME
     }
-    
+  
     class ScheduleStatus {
         <<enumeration>>
         DRAFT
@@ -330,21 +338,21 @@ classDiagram
         SATURDAY
         SUNDAY
     }
-    
+  
     BaseEntity <|-- Owner
     BaseEntity <|-- Store
     BaseEntity <|-- Employee
     BaseEntity <|-- Schedule
     BaseEntity <|-- Shift
     BaseEntity <|-- AvailabilitySubmission
-    
+  
     Owner "1" --> "*" Store : owns
     Store "1" --> "*" Employee : employs
     Store "1" --> "*" Schedule : has
     Schedule "1" --> "*" Shift : contains
     Employee "1" --> "*" Shift : works
     Employee "1" --> "*" AvailabilitySubmission : submits
-    
+  
     Employee --> EmploymentType
     Schedule --> ScheduleStatus
     AvailabilitySubmission --> DayOfWeek : uses java.time
@@ -701,20 +709,21 @@ MYSQL_ROOT_PASSWORD=your_root_password_here
 
 ## 11. 구현 순서 가이드
 
-| 순서 | 계층 | 작업 내용 |
-|------|------|----------|
-| 1 | **Infrastructure** | Docker Compose, .env.example, application-local.yml 설정 |
-| 2 | **Enum** | EmploymentType, ScheduleStatus 정의 (`java.time.DayOfWeek` 표준 사용) |
-| 3 | **Entity** | Owner → Store → Employee → Schedule → Shift → AvailabilitySubmission 순서로 구현 |
-| 4 | **Repository** | 각 엔티티에 대한 JpaRepository 인터페이스 생성 |
-| 5 | **Validation** | Docker MySQL 기동 후 DDL 자동 생성 검증 |
-| 6 | **Test** | Repository 단위 테스트 (선택) |
+| 순서 | 계층                     | 작업 내용                                                                             |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------- |
+| 1    | **Infrastructure** | Docker Compose, .env.example, application-local.yml 설정                              |
+| 2    | **Enum**           | EmploymentType, ScheduleStatus 정의 (`java.time.DayOfWeek` 표준 사용)               |
+| 3    | **Entity**         | Owner → Store → Employee → Schedule → Shift → AvailabilitySubmission 순서로 구현 |
+| 4    | **Repository**     | 각 엔티티에 대한 JpaRepository 인터페이스 생성                                        |
+| 5    | **Validation**     | Docker MySQL 기동 후 DDL 자동 생성 검증                                               |
+| 6    | **Test**           | Repository 단위 테스트 (선택)                                                         |
 
 ---
 
 ## 12. 참고 사항
 
 ### 12.1 Issue-001에서 완료된 항목 (재작업 불필요)
+
 - ✅ `BaseEntity` (id, createdAt, updatedAt)
 - ✅ `JpaConfig` (@EnableJpaAuditing)
 - ✅ `application-dev.yml` (H2 개발 환경)
@@ -722,6 +731,7 @@ MYSQL_ROOT_PASSWORD=your_root_password_here
 - ✅ `build.gradle` MySQL/JPA 의존성
 
 ### 12.2 향후 확장 (이번 이슈 범위 외)
+
 - ComplianceRule (노동법 규칙) 엔티티 - Issue-006
 - AuditLog (변경 이력) 엔티티 - 별도 이슈
 - 인증/인가 (Spring Security) - 별도 이슈

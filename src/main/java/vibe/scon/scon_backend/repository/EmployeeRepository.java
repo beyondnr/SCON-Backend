@@ -10,7 +10,14 @@ import java.util.List;
  * 
  * <p>직원 데이터에 대한 기본 CRUD 및 커스텀 쿼리를 제공합니다.</p>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-003} - 직원 등록 (CRUD 쿼리)</li>
+ *   <li>{@code TC-EMP-001~008} - 직원 API 테스트</li>
+ * </ul>
+ * 
  * @see Employee
+ * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003: 직원 API §8.3</a>
  */
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     

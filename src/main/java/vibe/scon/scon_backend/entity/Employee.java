@@ -25,10 +25,21 @@ import java.util.List;
  *   <li>외래키: {@code store_id} → {@code stores.id}</li>
  * </ul>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-003} - 직원 등록 (이름, 고용형태, 시급, 연락처)</li>
+ *   <li>{@code REQ-NF-007} - 저장 데이터 암호화: phone 필드 AES-256 암호화 필요</li>
+ *   <li>{@code REQ-NF-010} - PII 최소 수집: 필드 8개 이하 제한</li>
+ *   <li>{@code SRS §6.2.0} - ERD: EMPLOYEE 엔티티</li>
+ *   <li>{@code SRS §6.2.2} - Employee 데이터 모델</li>
+ * </ul>
+ * 
  * @see Store
  * @see Shift
  * @see AvailabilitySubmission
  * @see EmploymentType
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.2 Employee</a>
+ * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003: 직원 관리 API</a>
  */
 @Entity
 @Table(name = "employees")
@@ -43,9 +54,15 @@ public class Employee extends BaseEntity {
     private String name;
 
     /**
-     * 연락처 (선택)
+     * 연락처 (선택).
+     * 
+     * <p><b>보안 요구사항 (REQ-NF-007):</b> 
+     * DB 저장 시 AES-256-GCM 암호화 필수. 
+     * API 응답 시 복호화하여 반환.</p>
+     * 
+     * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">TC-EMP-002: PII 암호화 저장 검증</a>
      */
-    @Column(length = 20)
+    @Column(length = 255)  // 암호화 시 길이 증가
     private String phone;
 
     /**

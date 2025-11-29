@@ -26,8 +26,18 @@ import java.time.LocalTime;
  * 
  * <p>Note: {@code dayOfWeek} 필드는 Java 표준 {@link java.time.DayOfWeek}를 사용합니다.</p>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-004} - 공개 가용시간 제출 API</li>
+ *   <li>{@code REQ-FUNC-005} - 가용시간 유효성 및 충돌 검증</li>
+ *   <li>{@code SRS §6.2.0} - ERD: AVAILABILITY_SUBMISSION 엔티티</li>
+ *   <li>{@code SRS §6.2.3} - AvailabilitySubmission 데이터 모델</li>
+ * </ul>
+ * 
  * @see Employee
  * @see java.time.DayOfWeek
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.3 AvailabilitySubmission</a>
+ * @see <a href="tasks/github-issues/issue-004-REQ-FUNC-004-005.md">Issue-004: 가용시간 API</a>
  */
 @Entity
 @Table(name = "availability_submissions")

@@ -274,7 +274,7 @@ ID 형식: `REQ-FUNC-xxx`.
 |--------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
 | REQ-FUNC-001 | 3단계 온보딩 마법사                          | 신규 사장님을 위한 회원가입 → 매장 설정 → 첫 스케줄 생성의 3단계 온보딩 플로우를 제공해야 한다.             | Story 2(사장), F-01                    | Must              | **Given** 신규 사장님이 서비스에 처음 접속했을 때, **When** 온보딩 플로우를 통해 필수 정보를 입력하고 첫 스케줄 생성을 완료하면, **Then** 해당 매장은 대시보드에서 스케줄을 조회·수정할 수 있어야 한다. (참고 KPI: 신규 매장의 70% 이상이 10분 이내에 첫 스케줄을 생성 완료하는 것을 목표로 한다.) | UX 테스트, 분석 도구를 통한 시간 측정       |
 | REQ-FUNC-002 | 매장 정보 수집                               | 온보딩 과정에서 매장 ID, 업종, 영업시간, 대리인 정보를 수집·저장해야 한다.                                  | F-01, PRD §6.1 Store                   | Must              | **Given** 온보딩의 “매장 설정” 단계에서, **When** 필수 필드를 입력하고 저장하면, **Then** 해당 정보가 대시보드·API를 통해 재조회 가능해야 한다.                                                       | API 테스트, DB 스키마 검증                  |
-| REQ-FUNC-003 | 직원 등록                                    | 사장님이 직원의 역할, 계약 유형, 시급, 연락처를 등록할 수 있어야 한다.                                      | F-02, PRD §6.1 Employee                | Must              | **Given** 사장님이 직원 추가 화면을 열고, **When** 필수 정보(역할, 계약유형, 시급, 연락처)를 입력·저장하면, **Then** 고유한 직원 ID가 생성되고 매장과 연결되어야 한다.                               | UI 테스트, DB 확인                          |
+| REQ-FUNC-003 | 직원 등록                                    | 사장님이 직원의 이름, 고용형태, 시급, 연락처를 등록할 수 있어야 한다.                                      | F-02, PRD §6.1 Employee                | Must              | **Given** 사장님이 직원 추가 화면을 열고, **When** 필수 정보(이름, 고용형태, 시급, 연락처)를 입력·저장하면, **Then** 고유한 직원 ID가 생성되고 매장과 연결되어야 한다.                               | UI 테스트, DB 확인                          |
 | REQ-FUNC-004 | 공개 가용시간 제출 API                        | `POST /api/v1/availability` 엔드포인트와 모바일 폼을 통해 직원이 주차별 가용시간을 제출할 수 있어야 한다.   | Story 1, F-02, API-01                  | Must              | **Given** 유효한 직원 토큰과 주차가 주어졌을 때, **When** 모바일 폼을 통해 가용시간을 제출하면, **Then** 시스템은 입력을 검증하고 저장한 후 API 제약 내에서 성공 응답을 반환해야 한다.                   | API 테스트, 모바일 UI 테스트                |
 | REQ-FUNC-005 | 가용시간 유효성 및 충돌 검증                  | 동일 직원·동일 주차 내 가용시간 누락·중복을 자동으로 검출해야 한다.                                        | Story 1 AC4, F-02                      | Must              | **Given** 누락 또는 중복된 가용시간이 포함된 제출이 있을 때, **When** 시스템이 이를 처리하면, **Then** 충돌을 표시하고 스케줄 확정 전까지 해당 문제를 해결하도록 요구해야 한다.                        | 단위 테스트, 통합 테스트                    |
 | REQ-FUNC-006 | 승인 대기 대시보드                           | 활성 직원의 ≥70%가 가용시간을 제출한 경우, 대시보드에 “검토→조정→공지” 3단계 카드가 표시되어야 한다.        | Story 2 AC1, F-03                      | Must              | **Given** 활성 직원의 70% 이상이 유효한 가용시간을 제출했을 때, **When** 사장님이 대시보드를 열면, **Then** 2초 이내에 3단계 구조의 승인 대기 카드가 렌더링되어야 한다.                                | UI 테스트, 성능 테스트                      |
@@ -350,7 +350,122 @@ Story–Requirement–Test Case 간의 상위 매핑은 다음과 같다.
 
 ### 6.2 Entity & Data Model (엔터티 및 데이터 모델)
 
-다음 표는 논리적 수준의 데이터 모델을 정의한다.
+다음은 시스템의 핵심 데이터 모델을 정의한다.
+
+#### 6.2.0 ERD (Entity Relationship Diagram)
+
+##### 전체 ERD
+
+```mermaid
+erDiagram
+    OWNER {
+        bigint id PK
+        varchar email UK
+        varchar password
+        varchar name
+        varchar phone
+        datetime created_at
+        datetime updated_at
+    }
+    
+    STORE {
+        bigint id PK
+        varchar name
+        varchar business_type
+        varchar address
+        time open_time
+        time close_time
+        bigint owner_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    EMPLOYEE {
+        bigint id PK
+        varchar name
+        varchar phone
+        decimal hourly_wage
+        varchar employment_type
+        bigint store_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    SCHEDULE {
+        bigint id PK
+        date week_start_date
+        varchar status
+        bigint store_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    SHIFT {
+        bigint id PK
+        date work_date
+        time start_time
+        time end_time
+        bigint schedule_id FK
+        bigint employee_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    AVAILABILITY_SUBMISSION {
+        bigint id PK
+        date week_start_date
+        varchar day_of_week
+        time start_time
+        time end_time
+        bigint employee_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    COMPLIANCE_RULE {
+        bigint id PK
+        varchar code UK
+        varchar law_reference
+        json formula
+        date effective_from
+        varchar severity
+        varchar description
+        datetime created_at
+        datetime updated_at
+    }
+    
+    AUDIT_LOG {
+        bigint id PK
+        varchar entity_type
+        bigint entity_id
+        varchar action
+        bigint actor_id
+        json before_value
+        json after_value
+        varchar hash_signature
+        datetime created_at
+    }
+    
+    OWNER ||--o{ STORE : owns
+    STORE ||--o{ EMPLOYEE : employs
+    STORE ||--o{ SCHEDULE : has
+    SCHEDULE ||--o{ SHIFT : contains
+    EMPLOYEE ||--o{ SHIFT : works
+    EMPLOYEE ||--o{ AVAILABILITY_SUBMISSION : submits
+```
+
+##### 엔티티 관계 요약
+
+| 관계 | 카디널리티 | 설명 |
+|------|-----------|------|
+| Owner → Store | 1:N | 한 사장이 여러 매장 소유 가능 |
+| Store → Employee | 1:N | 한 매장에 여러 직원 소속 |
+| Store → Schedule | 1:N | 한 매장에 여러 주차 스케줄 |
+| Schedule → Shift | 1:N | 한 스케줄에 여러 근무 시프트 |
+| Employee → Shift | 1:N | 한 직원이 여러 시프트 근무 |
+| Employee → AvailabilitySubmission | 1:N | 한 직원이 여러 가용시간 제출 |
+
+---
 
 #### 6.2.1 Store
 
@@ -372,13 +487,13 @@ Story–Requirement–Test Case 간의 상위 매핑은 다음과 같다.
 | id               | UUID/String| 직원 고유 ID                       | PK                                        |
 | storeId          | UUID/String| 소속 매장 ID                       | FK → Store.id                             |
 | name             | String     | 직원 이름                          | 가명 처리 가능                            |
-| role             | Enum       | Owner / Staff / Manager           |                                           |
-| contractType     | Enum       | 정규 / 비정규                      |                                           |
+| phone            | String     | 연락처 (전화번호)                  | PII, 저장 시 AES-256 암호화 (REQ-NF-007)  |
+| employmentType   | Enum       | FULL_TIME / PART_TIME             | 고용 형태                                 |
 | hourlyWage       | Decimal    | 시급                               |                                           |
-| contactChannel   | Enum       | KakaoTalk / SMS                    |                                           |
-| contactIdentifier| String     | 전화번호 또는 카카오 ID           | PII, 저장 시 암호화                       |
 | createdAt        | DateTime   | 생성 시각                          |                                           |
 | updatedAt        | DateTime   | 마지막 수정 시각                   |                                           |
+
+> **MVP v1.0 Note**: `role` (Owner/Staff/Manager) 및 `contactChannel` (KakaoTalk/SMS) 필드는 v1.1+에서 RBAC 및 다중 알림 채널 지원 시 추가 예정.
 
 #### 6.2.3 AvailabilitySubmission
 
@@ -518,6 +633,278 @@ sequenceDiagram
         Core-->>API: 200 Approved + 증빙 링크
         API-->>Dash: 승인 상태 + 급여 미리보기 표시
     end
+```
+
+### 6.4 CLD (Class Diagram)
+
+#### 6.4.1 시스템 아키텍처 개요
+
+본 프로젝트는 **Controller → Service → Repository** 순서의 3-Tier 레이어드 아키텍처를 적용한다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Client (HTTP)                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Controller Layer (Presentation)                                │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │
+│  │HealthController│ │ StoreController│ │ScheduleController│    │
+│  └───────────────┘  └───────────────┘  └───────────────┘       │
+│         │                   │                   │               │
+│         └───────────────────┼───────────────────┘               │
+│                             ▼                                   │
+│                     RequestDTO / ResponseDTO                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Service Layer (Business Logic)                                 │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │
+│  │ StoreService  │  │EmployeeService│  │ ScheduleService│      │
+│  └───────────────┘  └───────────────┘  └───────────────┘       │
+│         │                   │                   │               │
+│         └───────────────────┼───────────────────┘               │
+│                             ▼                                   │
+│                    @Transactional 경계                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Repository Layer (Data Access)                                 │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │
+│  │StoreRepository│  │EmployeeRepository│ │ScheduleRepository│  │
+│  └───────────────┘  └───────────────┘  └───────────────┘       │
+│         │                   │                   │               │
+│         └───────────────────┼───────────────────┘               │
+│                             ▼                                   │
+│                      JPA / Hibernate                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     MySQL Database                              │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
+│  │ owners  │  │ stores  │  │employees│  │schedules│           │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 6.4.2 패키지 의존성 다이어그램
+
+```mermaid
+graph TB
+    subgraph Presentation["Presentation Layer"]
+        Controller["controller/*"]
+        DTO["dto/*"]
+    end
+    
+    subgraph Business["Business Layer"]
+        Service["service/*"]
+        Exception["exception/*"]
+    end
+    
+    subgraph Data["Data Layer"]
+        Repository["repository/*"]
+        Entity["entity/*"]
+    end
+    
+    subgraph Infrastructure["Infrastructure"]
+        Config["config/*"]
+        Util["util/*"]
+    end
+    
+    Controller --> DTO
+    Controller --> Service
+    Controller --> Exception
+    
+    Service --> Repository
+    Service --> Entity
+    Service --> DTO
+    Service --> Exception
+    
+    Repository --> Entity
+    
+    Config --> Service
+    Config --> Repository
+    
+    Util --> Service
+    Util --> Controller
+```
+
+#### 6.4.3 핵심 엔티티 클래스 다이어그램
+
+```mermaid
+classDiagram
+    class BaseEntity {
+        -Long id
+        -LocalDateTime createdAt
+        -LocalDateTime updatedAt
+    }
+    
+    class Owner {
+        -String email
+        -String password
+        -String name
+        -String phone
+        -List~Store~ stores
+    }
+    
+    class Store {
+        -String name
+        -String businessType
+        -String address
+        -LocalTime openTime
+        -LocalTime closeTime
+        -Owner owner
+        -List~Employee~ employees
+        -List~Schedule~ schedules
+    }
+    
+    class Employee {
+        -String name
+        -String phone
+        -BigDecimal hourlyWage
+        -EmploymentType employmentType
+        -Store store
+        -List~Shift~ shifts
+        -List~AvailabilitySubmission~ availabilities
+    }
+    
+    class Schedule {
+        -LocalDate weekStartDate
+        -ScheduleStatus status
+        -Store store
+        -List~Shift~ shifts
+    }
+    
+    class Shift {
+        -LocalDate workDate
+        -LocalTime startTime
+        -LocalTime endTime
+        -Schedule schedule
+        -Employee employee
+    }
+    
+    class AvailabilitySubmission {
+        -LocalDate weekStartDate
+        -DayOfWeek dayOfWeek
+        -LocalTime startTime
+        -LocalTime endTime
+        -Employee employee
+    }
+    
+    class EmploymentType {
+        <<enumeration>>
+        FULL_TIME
+        PART_TIME
+    }
+    
+    class ScheduleStatus {
+        <<enumeration>>
+        DRAFT
+        PENDING
+        APPROVED
+        PUBLISHED
+    }
+
+    class DayOfWeek {
+        <<java.time>>
+        MONDAY
+        TUESDAY
+        WEDNESDAY
+        THURSDAY
+        FRIDAY
+        SATURDAY
+        SUNDAY
+    }
+    
+    BaseEntity <|-- Owner
+    BaseEntity <|-- Store
+    BaseEntity <|-- Employee
+    BaseEntity <|-- Schedule
+    BaseEntity <|-- Shift
+    BaseEntity <|-- AvailabilitySubmission
+    
+    Owner "1" --> "*" Store : owns
+    Store "1" --> "*" Employee : employs
+    Store "1" --> "*" Schedule : has
+    Schedule "1" --> "*" Shift : contains
+    Employee "1" --> "*" Shift : works
+    Employee "1" --> "*" AvailabilitySubmission : submits
+    
+    Employee --> EmploymentType
+    Schedule --> ScheduleStatus
+    AvailabilitySubmission --> DayOfWeek : uses java.time
+```
+
+#### 6.4.4 공통 응답 및 예외 처리 클래스 다이어그램
+
+```mermaid
+classDiagram
+    class ApiResponse~T~ {
+        -int status
+        -String message
+        -T data
+        -LocalDateTime timestamp
+        +success(T data) ApiResponse
+        +success(String message, T data) ApiResponse
+        +created(T data) ApiResponse
+        +error(int status, String message) ApiResponse
+    }
+    
+    class ErrorResponse {
+        -int status
+        -String error
+        -String message
+        -String path
+        -LocalDateTime timestamp
+    }
+    
+    class GlobalExceptionHandler {
+        +handleValidationException() ResponseEntity
+        +handleResourceNotFoundException() ResponseEntity
+        +handleBusinessException() ResponseEntity
+        +handleException() ResponseEntity
+    }
+    
+    class BusinessException {
+        -String errorCode
+        -String message
+    }
+    
+    class ResourceNotFoundException
+    class BadRequestException
+    
+    BusinessException <|-- ResourceNotFoundException
+    BusinessException <|-- BadRequestException
+    GlobalExceptionHandler ..> ErrorResponse : creates
+    GlobalExceptionHandler ..> BusinessException : handles
+```
+
+#### 6.4.5 데이터 흐름 (Request → Response)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant Ctrl as Controller
+    participant Svc as Service
+    participant Repo as Repository
+    participant DB as MySQL
+
+    C->>Ctrl: HTTP Request (JSON)
+    Ctrl->>Ctrl: @Valid DTO Validation
+    Ctrl->>Svc: Service Method Call
+    Svc->>Svc: Business Logic
+    Svc->>Repo: Repository Method Call
+    Repo->>DB: SQL Query (JPA)
+    DB-->>Repo: ResultSet
+    Repo-->>Svc: Entity
+    Svc->>Svc: Entity to DTO
+    Svc-->>Ctrl: DTO
+    Ctrl->>Ctrl: ApiResponse Wrap
+    Ctrl-->>C: HTTP Response (JSON)
 ```
 
 
