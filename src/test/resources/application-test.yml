@@ -1,0 +1,36 @@
+# Test Profile Configuration
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  h2:
+    console:
+      enabled: true
+
+# Application Configuration for Tests
+app:
+  jwt:
+    secret: test-jwt-secret-key-for-testing-purposes-32chars!
+    access-expiration: 1800000   # 30분
+    refresh-expiration: 604800000  # 7일
+  
+  encryption:
+    key: test-encryption-key-for-testing-32!
+
+# Logging
+logging:
+  level:
+    vibe.scon: DEBUG
+    org.springframework.security: DEBUG

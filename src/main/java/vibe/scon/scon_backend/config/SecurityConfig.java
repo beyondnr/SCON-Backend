@@ -1,5 +1,6 @@
 package vibe.scon.scon_backend.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -93,7 +94,16 @@ public class SecurityConfig {
                         .frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 
                 // JWT 필터 추가 (UsernamePasswordAuthenticationFilter 이전에 실행)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                
+                // 예외 처리: 인증 실패 시 401 반환
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"status\":401,\"message\":\"인증이 필요합니다\"}");
+                        })
+                );
 
         return http.build();
     }
