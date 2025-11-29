@@ -30,3 +30,14 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.springframework.web: DEBUG
 
+# =============================================================================
+# Application Custom Properties for Development
+# =============================================================================
+app:
+  jwt:
+    secret: dev-jwt-secret-key-32-chars-ok!
+    access-expiration: 1800000
+    refresh-expiration: 604800000
+  encryption:
+    key: dev-aes-encryption-key-32-byte!
+

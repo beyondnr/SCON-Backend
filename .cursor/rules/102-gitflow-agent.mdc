@@ -18,5 +18,32 @@ Globs: /**/*
 - One purpose per branch, avoiding many module changes per branch
 - Push to remote via `git push -u origin <branch>`
 - Verify GitHub credential via `git ls-remote`; prompt if missing
-- After branch push, create draft PR to `main` with `gh pr create --draft`
+
+# Pull Request Creation (MANDATORY PROCESS)
+**IMPORTANT**: Before creating a PR, you MUST follow the process defined in `103-pr-creation.mdc`.
+
+## Pre-PR Checklist (MANDATORY)
+1. **Run Tests**: Execute `./gradlew clean build` and `./gradlew test`
+   - Build MUST pass (`BUILD SUCCESSFUL`)
+   - Test results MUST be recorded for PR body
+2. **Record Test Results**: Document test execution results for each test case
+   - Include test case ID, description, and execution status (PASSED/FAILED/SKIPPED)
+   - See `103-pr-creation.mdc` section "6. 테스트 케이스 및 실행 결과" for format
+3. **Prepare PR Body**: Create PR body following the format in `103-pr-creation.mdc`
+   - MUST include "6. 테스트 케이스 및 실행 결과" section
+   - MUST include test execution results for each test case
+   - MUST follow the exact format specified in `103-pr-creation.mdc`
+
+## PR Creation Command
+After completing the pre-PR checklist:
+```bash
+# Create PR body file first (following 103-pr-creation.mdc format)
+# Then create draft PR
+gh pr create --draft --title "{PR title}" --body-file pr-body.md
+```
+
+## Reference Rules
+- **PR Format**: See `103-pr-creation.mdc` for mandatory PR body format
+- **Test Execution**: See `103-pr-creation.mdc` section "1. 테스트 실행 (MANDATORY)"
+- **Test Results**: See `103-pr-creation.mdc` section "6.2 테스트 실행 결과 (MANDATORY)"
 

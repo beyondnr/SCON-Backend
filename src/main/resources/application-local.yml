@@ -60,7 +60,7 @@ app:
   # Encryption - 로컬 개발용 기본값
   # ─────────────────────────────────────────────────────────────────────────
   encryption:
-    key: ${ENCRYPTION_KEY:local-dev-aes-key-for-testing-32c}
+    key: ${ENCRYPTION_KEY:local-aes-encryption-key-32byte}
 
   # ─────────────────────────────────────────────────────────────────────────
   # AI Model - 로컬 개발 설정
