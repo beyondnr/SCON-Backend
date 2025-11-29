@@ -26,9 +26,20 @@ import java.util.List;
  *   <li>복합 유니크: {@code (store_id, week_start_date)}</li>
  * </ul>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-006} - 승인 대기 대시보드</li>
+ *   <li>{@code REQ-FUNC-007} - 드래그&드롭 스케줄 편집</li>
+ *   <li>{@code REQ-FUNC-008} - 1클릭 스케줄 승인</li>
+ *   <li>{@code SRS §6.2.0} - ERD: SCHEDULE 엔티티</li>
+ *   <li>{@code SRS §6.2.4} - Schedule 데이터 모델</li>
+ * </ul>
+ * 
  * @see Store
  * @see Shift
  * @see ScheduleStatus
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.4 Schedule</a>
+ * @see <a href="tasks/github-issues/issue-005-REQ-FUNC-006-007.md">Issue-005: 스케줄 대시보드</a>
  */
 @Entity
 @Table(

@@ -9,6 +9,15 @@ package vibe.scon.scon_backend.entity.enums;
  *   <li>{@code FULL_TIME} - 정규직 (주 40시간 이상 근무)</li>
  *   <li>{@code PART_TIME} - 비정규직/아르바이트 (시간제 근무)</li>
  * </ul>
+ * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-003} - 직원 등록 (고용형태 필드)</li>
+ *   <li>{@code SRS §6.2.2} - Employee.employmentType</li>
+ * </ul>
+ * 
+ * @see vibe.scon.scon_backend.entity.Employee
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.2 Employee</a>
  */
 public enum EmploymentType {
     

@@ -24,9 +24,18 @@ import java.util.List;
  *   <li>외래키: {@code owner_id} → {@code owners.id}</li>
  * </ul>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-002} - 매장 정보 수집 (업종, 영업시간 등)</li>
+ *   <li>{@code SRS §6.2.0} - ERD: STORE 엔티티</li>
+ *   <li>{@code SRS §6.2.1} - Store 데이터 모델</li>
+ * </ul>
+ * 
  * @see Owner
  * @see Employee
  * @see Schedule
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.1 Store</a>
+ * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003: 매장 관리 API</a>
  */
 @Entity
 @Table(name = "stores")

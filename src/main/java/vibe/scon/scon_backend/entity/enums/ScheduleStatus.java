@@ -15,6 +15,17 @@ package vibe.scon.scon_backend.entity.enums;
  *   <li>{@code APPROVED} - 승인됨 (노동법 검증 완료)</li>
  *   <li>{@code PUBLISHED} - 공개됨 (직원에게 전달 완료)</li>
  * </ul>
+ * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-006} - 승인 대기 대시보드 (PENDING 상태)</li>
+ *   <li>{@code REQ-FUNC-008} - 1클릭 스케줄 승인 (DRAFT → APPROVED)</li>
+ *   <li>{@code REQ-FUNC-016} - 직원 스케줄 알림 (PUBLISHED 상태)</li>
+ *   <li>{@code SRS §6.2.4} - Schedule.status</li>
+ * </ul>
+ * 
+ * @see vibe.scon.scon_backend.entity.Schedule
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.4 Schedule</a>
  */
 public enum ScheduleStatus {
     

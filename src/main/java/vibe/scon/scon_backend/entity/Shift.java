@@ -24,8 +24,16 @@ import java.time.LocalTime;
  *   <li>외래키: {@code employee_id} → {@code employees.id}</li>
  * </ul>
  * 
+ * <h3>요구사항 추적 (Traceability):</h3>
+ * <ul>
+ *   <li>{@code REQ-FUNC-007} - 드래그&드롭 스케줄 편집 (시프트 이동)</li>
+ *   <li>{@code REQ-FUNC-011} - 자동 급여·수당 계산 (근무시간 기반)</li>
+ *   <li>{@code SRS §6.2.0} - ERD: SHIFT 엔티티</li>
+ * </ul>
+ * 
  * @see Schedule
  * @see Employee
+ * @see <a href="docs/GPT-SRS_v0.2.md">SRS §6.2.0 ERD</a>
  */
 @Entity
 @Table(name = "shifts")
