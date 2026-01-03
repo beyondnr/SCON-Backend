@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -46,6 +47,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class RateLimitingFilter extends OncePerRequestFilter {
 
+    private final Environment environment;
+
     // IP별 요청 횟수 추적 (메모리 기반, 프로덕션에서는 Redis 사용 권장)
     private final Map<String, RateLimitInfo> rateLimitMap = new ConcurrentHashMap<>();
     
@@ -64,6 +67,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
+        
+        // 테스트 환경에서는 Rate Limiting 비활성화
+        String[] activeProfiles = environment.getActiveProfiles();
+        boolean isTestProfile = java.util.Arrays.asList(activeProfiles).contains("test");
+        if (isTestProfile) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         
         String path = request.getRequestURI();
         

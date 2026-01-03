@@ -181,6 +181,7 @@ public class SecurityConfig {
                 )
                 
                 // Rate Limiting 필터 추가 (가장 먼저 실행 - POC-BE-SEC-002)
+                // RateLimitingFilter 내부에서 테스트 프로파일 확인하여 비활성화
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 
                 // JWT 필터 추가 (UsernamePasswordAuthenticationFilter 이전에 실행)

@@ -142,7 +142,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     @DisplayName("로그인 실패 - 존재하지 않는 이메일")
-    void login_emailNotFound_returns404() throws Exception {
+    void login_emailNotFound_returns400() throws Exception {
         // Given
         LoginRequestDto loginRequest = LoginRequestDto.builder()
                 .email("nonexistent@example.com")
@@ -150,11 +150,12 @@ class AuthControllerIntegrationTest {
                 .build();
 
         // When & Then
+        // POC-BE-SEC-002: 이메일 존재 여부 노출 방지를 위해 400 BadRequest 반환
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value(containsString("등록되지 않은 이메일")));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("이메일 또는 비밀번호가 올바르지 않습니다")));
     }
 
     @Test

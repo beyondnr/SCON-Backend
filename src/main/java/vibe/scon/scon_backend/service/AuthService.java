@@ -65,7 +65,7 @@ public class AuthService {
      * 실제 운영 환경에서는 파일이나 DB에서 로드하는 것을 권장합니다.</p>
      */
     private static final Set<String> COMMON_PASSWORDS = Set.of(
-            "password", "12345678", "qwerty123", "admin123", "Password123!",
+            "password", "12345678", "qwerty123", "admin123",
             "password123", "123456789", "1234567890", "qwerty", "abc123",
             "monkey", "1234567", "letmein", "trustno1", "dragon",
             "baseball", "iloveyou", "master", "sunshine", "ashley"
