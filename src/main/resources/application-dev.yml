@@ -35,9 +35,9 @@ logging:
 # =============================================================================
 app:
   jwt:
-    secret: dev-jwt-secret-key-32-chars-ok!
+    secret: ${JWT_SECRET_KEY:}
     access-expiration: 1800000
     refresh-expiration: 604800000
   encryption:
-    key: dev-aes-encryption-key-32-byte!
+    key: ${ENCRYPTION_KEY:}
 

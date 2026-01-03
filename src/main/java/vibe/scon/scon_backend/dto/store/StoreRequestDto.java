@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 
 /**
@@ -56,4 +57,9 @@ public class StoreRequestDto {
      * 영업 종료 시간.
      */
     private LocalTime closeTime;
+
+    /**
+     * 정기 휴무일 (선택).
+     */
+    private DayOfWeek storeHoliday;
 }

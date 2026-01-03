@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -12,7 +14,15 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vibe.scon.scon_backend.config.filter.JwtAuthenticationFilter;
+import vibe.scon.scon_backend.config.filter.RateLimitingFilter;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Spring Security 설정 클래스.
@@ -34,8 +44,17 @@ import vibe.scon.scon_backend.config.filter.JwtAuthenticationFilter;
  *   <li>비밀번호 인코더: BCrypt (cost factor 12)</li>
  * </ul>
  * 
+ * <h3>공개 엔드포인트:</h3>
+ * <ul>
+ *   <li>{@code /api/v1/auth/signup} - 회원가입</li>
+ *   <li>{@code /api/v1/auth/login} - 로그인</li>
+ *   <li>{@code /api/v1/auth/refresh} - 토큰 갱신</li>
+ *   <li>{@code /api/v1/auth/logout} - 로그아웃 (Refresh Token으로 인증)</li>
+ * </ul>
+ * 
  * @see JwtAuthenticationFilter
  * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003</a>
+ * @see <a href="../../SCON-Update-Plan/POC-BE-FUNC-003-logout.md">POC-BE-FUNC-003</a>
  */
 @Configuration
 @EnableWebSecurity
@@ -43,24 +62,66 @@ import vibe.scon.scon_backend.config.filter.JwtAuthenticationFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
+    private final Environment environment;
 
     /**
-     * Security Filter Chain 설정.
+     * Security Filter Chain 설정 (개발 환경).
      * 
-     * <p>API 엔드포인트별 접근 권한을 설정합니다.</p>
+     * <p>개발 환경에서는 H2 콘솔 접근을 허용합니다.</p>
      * 
+     * <h3>요구사항 추적 (Traceability):</h3>
      * <ul>
-     *   <li>공개 API: /api/v1/auth/signup, /api/v1/auth/login, /health</li>
-     *   <li>인증 필요: 그 외 모든 /api/** 엔드포인트</li>
+     *   <li>{@code POC-BE-SEC-002} - 백엔드 보안 강화 (H2 콘솔 접근 제어)</li>
      * </ul>
      * 
      * @param http HttpSecurity 객체
      * @return 구성된 SecurityFilterChain
      * @throws Exception 설정 실패 시
+     * @see <a href="../../SCON-Update-Plan/POC-BE-SEC-002.md">POC-BE-SEC-002</a>
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Profile({"dev", "local", "!prod"})
+    public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
+        return buildSecurityFilterChain(http, true); // H2 콘솔 허용
+    }
+
+    /**
+     * Security Filter Chain 설정 (프로덕션 환경).
+     * 
+     * <p>프로덕션 환경에서는 H2 콘솔 접근을 완전히 차단합니다.</p>
+     * 
+     * <h3>요구사항 추적 (Traceability):</h3>
+     * <ul>
+     *   <li>{@code POC-BE-SEC-002} - 백엔드 보안 강화 (H2 콘솔 접근 제어)</li>
+     * </ul>
+     * 
+     * @param http HttpSecurity 객체
+     * @return 구성된 SecurityFilterChain
+     * @throws Exception 설정 실패 시
+     * @see <a href="../../SCON-Update-Plan/POC-BE-SEC-002.md">POC-BE-SEC-002</a>
+     */
+    @Bean
+    @Profile("prod")
+    public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
+        return buildSecurityFilterChain(http, false); // H2 콘솔 차단
+    }
+
+    /**
+     * Security Filter Chain 빌더 메서드.
+     * 
+     * <p>공통 Security 설정을 구성합니다.</p>
+     * 
+     * @param http HttpSecurity 객체
+     * @param allowH2Console H2 콘솔 허용 여부
+     * @return 구성된 SecurityFilterChain
+     * @throws Exception 설정 실패 시
+     */
+    private SecurityFilterChain buildSecurityFilterChain(HttpSecurity http, boolean allowH2Console) throws Exception {
         http
+                // CORS 설정 적용 (프론트엔드 연동을 위해 필수)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                
                 // CSRF 비활성화 (REST API는 상태를 저장하지 않으므로)
                 .csrf(AbstractHttpConfigurer::disable)
                 
@@ -69,29 +130,59 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 
                 // HTTP 요청 인가 설정
-                .authorizeHttpRequests(auth -> auth
-                        // 공개 엔드포인트 (인증 불필요)
-                        .requestMatchers(
-                                "/api/v1/auth/signup",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/health",
-                                "/api/health"
-                        ).permitAll()
-                        
-                        // H2 콘솔 (개발용)
-                        .requestMatchers("/h2-console/**").permitAll()
-                        
-                        // Swagger/OpenAPI (추후 추가 시)
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        
-                        // 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(
+                            "/api/v1/auth/signup",
+                            "/api/v1/auth/login",
+                            "/api/v1/auth/refresh",
+                            "/api/v1/auth/logout",
+                            "/health",
+                            "/api/health",
+                            "/api/v1/health"
+                    ).permitAll();
+                    
+                    // H2 콘솔은 개발 환경에서만 허용 (POC-BE-SEC-002)
+                    if (allowH2Console) {
+                        auth.requestMatchers("/h2-console/**").permitAll();
+                    }
+                    
+                    // Swagger/OpenAPI (추후 추가 시)
+                    auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                    
+                    // 그 외 모든 요청은 인증 필요
+                    auth.anyRequest().authenticated();
+                })
+                
+                // Security 헤더 설정 (POC-BE-SEC-002)
+                .headers(headers -> headers
+                        // Clickjacking 방어: DENY (H2 콘솔은 개발 환경에서만 sameOrigin 허용)
+                        .frameOptions(frameOptions -> {
+                            String activeProfile = environment.getProperty("spring.profiles.active", "dev");
+                            boolean isProduction = "prod".equals(activeProfile) || "production".equals(activeProfile);
+                            if (isProduction) {
+                                frameOptions.deny();
+                            } else {
+                                frameOptions.sameOrigin(); // 개발 환경: H2 콘솔 허용
+                            }
+                        })
+                        // MIME 스니핑 방어
+                        .contentTypeOptions(contentTypeOptions -> contentTypeOptions.disable())
+                        // HSTS (HTTPS 강제)
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000) // 1년
+                        )
+                        // 추가 Security 헤더
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "X-Content-Type-Options", "nosniff",
+                                "X-Frame-Options", "DENY",
+                                "X-XSS-Protection", "1; mode=block",
+                                "Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+                        ))
                 )
                 
-                // H2 콘솔 iframe 허용 (개발용)
-                .headers(headers -> headers
-                        .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                // Rate Limiting 필터 추가 (가장 먼저 실행 - POC-BE-SEC-002)
+                // RateLimitingFilter 내부에서 테스트 프로파일 확인하여 비활성화
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 
                 // JWT 필터 추가 (UsernamePasswordAuthenticationFilter 이전에 실행)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -121,5 +212,84 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         // BCrypt with cost factor 12 (Issue-003 §7.2 스펙)
         return new BCryptPasswordEncoder(12);
+    }
+
+    /**
+     * CORS Configuration Source Bean.
+     * 
+     * <p>프론트엔드 개발 서버 및 프로덕션 도메인에서의 API 호출을 허용하기 위한 CORS 설정입니다.</p>
+     * 
+     * <h3>환경별 설정:</h3>
+     * <ul>
+     *   <li>개발 환경: 기본값으로 localhost 포트 허용</li>
+     *   <li>프로덕션 환경: 환경 변수 {@code CORS_ALLOWED_ORIGINS}로 설정된 도메인만 허용</li>
+     * </ul>
+     * 
+     * <h3>요구사항 추적 (Traceability):</h3>
+     * <ul>
+     *   <li>{@code POC-BE-SEC-002} - 백엔드 보안 강화 (CORS 설정)</li>
+     * </ul>
+     * 
+     * @return CorsConfigurationSource 인스턴스
+     * @throws IllegalStateException 프로덕션 환경에서 CORS_ALLOWED_ORIGINS가 설정되지 않은 경우
+     * @see <a href="../../SCON-Update-Plan/POC-BE-SEC-002.md">POC-BE-SEC-002</a>
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // 환경 변수에서 CORS 허용 Origin 읽기
+        String allowedOriginsEnv = environment.getProperty("app.cors.allowed-origins");
+        String activeProfile = environment.getProperty("spring.profiles.active", "dev");
+        boolean isProduction = "prod".equals(activeProfile) || "production".equals(activeProfile);
+        
+        if (allowedOriginsEnv != null && !allowedOriginsEnv.trim().isEmpty()) {
+            // 환경 변수가 설정된 경우: 특정 Origin만 허용
+            List<String> origins = Arrays.asList(allowedOriginsEnv.split(","));
+            configuration.setAllowedOrigins(origins.stream()
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList());
+        } else {
+            // 환경 변수가 설정되지 않은 경우
+            if (isProduction) {
+                throw new IllegalStateException(
+                    "프로덕션 환경에서는 app.cors.allowed-origins 환경 변수를 반드시 설정해야 합니다. " +
+                    "예: CORS_ALLOWED_ORIGINS=https://lawfulshift.com,https://www.lawfulshift.com"
+                );
+            }
+            // 개발 환경 기본값: localhost 포트 허용
+            configuration.setAllowedOriginPatterns(List.of(
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "http://localhost:5174",
+                    "http://localhost:9002"
+            ));
+        }
+        
+        // 허용할 HTTP 메서드
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+        ));
+        
+        // 특정 헤더만 허용 (와일드카드 제거 - POC-BE-SEC-002)
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With"
+        ));
+        
+        // 자격 증명(쿠키, Authorization 헤더) 허용
+        configuration.setAllowCredentials(true);
+        
+        // Preflight 요청 캐시 시간 (1시간)
+        configuration.setMaxAge(3600L);
+        
+        // 노출할 응답 헤더
+        configuration.setExposedHeaders(List.of("Authorization"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

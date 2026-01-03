@@ -6,9 +6,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import vibe.scon.scon_backend.entity.Employee;
 import vibe.scon.scon_backend.entity.enums.EmploymentType;
+import vibe.scon.scon_backend.entity.enums.ShiftPreset;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+
 
 /**
  * 직원 응답 DTO.
@@ -57,6 +61,26 @@ public class EmployeeResponseDto {
     private EmploymentType employmentType;
 
     /**
+     * 근무 프리셋.
+     */
+    private ShiftPreset shiftPreset;
+
+    /**
+     * 사용자 정의 근무 시작 시간.
+     */
+    private LocalTime customShiftStartTime;
+
+    /**
+     * 사용자 정의 근무 종료 시간.
+     */
+    private LocalTime customShiftEndTime;
+
+    /**
+     * 개인 휴무일.
+     */
+    private DayOfWeek personalHoliday;
+
+    /**
      * 소속 매장 ID.
      */
     private Long storeId;
@@ -92,6 +116,10 @@ public class EmployeeResponseDto {
                 .phone(decryptedPhone)
                 .hourlyWage(employee.getHourlyWage())
                 .employmentType(employee.getEmploymentType())
+                .shiftPreset(employee.getShiftPreset())
+                .customShiftStartTime(employee.getCustomShiftStartTime())
+                .customShiftEndTime(employee.getCustomShiftEndTime())
+                .personalHoliday(employee.getPersonalHoliday())
                 .storeId(employee.getStore().getId())
                 .storeName(employee.getStore().getName())
                 .createdAt(employee.getCreatedAt())
@@ -114,6 +142,10 @@ public class EmployeeResponseDto {
                 .phone(employee.getPhone())  // 암호화된 값 또는 null
                 .hourlyWage(employee.getHourlyWage())
                 .employmentType(employee.getEmploymentType())
+                .shiftPreset(employee.getShiftPreset())
+                .customShiftStartTime(employee.getCustomShiftStartTime())
+                .customShiftEndTime(employee.getCustomShiftEndTime())
+                .personalHoliday(employee.getPersonalHoliday())
                 .storeId(employee.getStore().getId())
                 .storeName(employee.getStore().getName())
                 .createdAt(employee.getCreatedAt())

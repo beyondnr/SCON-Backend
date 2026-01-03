@@ -18,9 +18,16 @@ spring:
   # JPA Production Settings
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
+
+# CORS Configuration - Production
+# 프로덕션 환경에서는 반드시 환경 변수 CORS_ALLOWED_ORIGINS를 설정해야 합니다.
+# 예: CORS_ALLOWED_ORIGINS=https://lawfulshift.com,https://www.lawfulshift.com
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 # Logging - Production level
 logging:

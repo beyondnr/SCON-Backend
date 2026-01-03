@@ -80,13 +80,23 @@ public class EmployeeService {
         Employee employee = Employee.builder()
                 .name(request.getName())
                 .phone(encryptedPhone)  // 암호화된 phone 저장
+                .email(request.getEmail())
                 .hourlyWage(request.getHourlyWage())
                 .employmentType(request.getEmploymentType())
+                .shiftPreset(request.getShiftPreset())
+                .customShiftStartTime(request.getCustomShiftStartTime())
+                .customShiftEndTime(request.getCustomShiftEndTime())
+                .personalHoliday(request.getPersonalHoliday())
                 .store(store)
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
         log.info("Employee created. employeeId: {}, storeId: {}", savedEmployee.getId(), storeId);
+
+        // Mock 메일 발송 로직
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            log.info("[Mock] 개인정보 수집 출처 안내 메일 발송. To: {}", request.getEmail());
+        }
 
         // 응답 시 복호화된 phone 반환 (TC-EMP-003)
         return EmployeeResponseDto.from(savedEmployee, request.getPhone());
@@ -140,10 +150,12 @@ public class EmployeeService {
     public List<EmployeeResponseDto> getEmployeesByStore(Long ownerId, Long storeId) {
         log.debug("Getting employees for store. storeId: {}, ownerId: {}", storeId, ownerId);
 
-        // 매장 소유권 확인
+        // 매장 소유권 확인 (1차 검증)
         getStoreAndValidateOwnership(storeId, ownerId);
 
-        List<Employee> employees = employeeRepository.findByStoreId(storeId);
+        // ownerId를 포함한 쿼리로 변경 (2차 검증 - 방어적 프로그래밍)
+        // POC-BE-SEC-001: 데이터 격리 및 접근 제어 개선
+        List<Employee> employees = employeeRepository.findByStoreIdAndOwnerId(storeId, ownerId);
 
         return employees.stream()
                 .map(employee -> EmployeeResponseDto.from(employee, decryptPhone(employee.getPhone())))
@@ -186,8 +198,13 @@ public class EmployeeService {
         employee.update(
                 request.getName(),
                 encryptedPhone,
+                request.getEmail(),
                 request.getHourlyWage(),
-                request.getEmploymentType()
+                request.getEmploymentType(),
+                request.getShiftPreset(),
+                request.getCustomShiftStartTime(),
+                request.getCustomShiftEndTime(),
+                request.getPersonalHoliday()
         );
 
         log.info("Employee updated. employeeId: {}", employeeId);

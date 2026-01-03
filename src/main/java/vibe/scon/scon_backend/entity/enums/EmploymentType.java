@@ -6,8 +6,8 @@ package vibe.scon.scon_backend.entity.enums;
  * <p>직원의 근무 유형에 따라 급여 계산 방식과 노동법 적용이 달라질 수 있습니다.</p>
  * 
  * <ul>
- *   <li>{@code FULL_TIME} - 정규직 (주 40시간 이상 근무)</li>
- *   <li>{@code PART_TIME} - 비정규직/아르바이트 (시간제 근무)</li>
+ *   <li>{@code MANAGER} - 매니저 (매장 관리 역할)</li>
+ *   <li>{@code EMPLOYEE} - 일반 직원 (일반 업무 역할)</li>
  * </ul>
  * 
  * <h3>요구사항 추적 (Traceability):</h3>
@@ -22,13 +22,13 @@ package vibe.scon.scon_backend.entity.enums;
 public enum EmploymentType {
     
     /**
-     * 정규직 - 주 40시간 이상 근무하는 직원
+     * 매니저 - 매장 관리 역할을 수행하는 직원
      */
-    FULL_TIME,
+    MANAGER,
     
     /**
-     * 비정규직/아르바이트 - 시간제로 근무하는 직원
+     * 일반 직원 - 일반적인 업무를 수행하는 직원
      */
-    PART_TIME
+    EMPLOYEE
 }
 

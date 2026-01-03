@@ -1,7 +1,9 @@
 package vibe.scon.scon_backend.dto.auth;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,10 +41,11 @@ public class SignupRequestDto {
     /**
      * 비밀번호.
      * 
-     * <p>8~50자, BCrypt로 해시되어 저장됨</p>
+     * <p>8~20자, 영문/숫자/특수문자 포함. BCrypt로 해시되어 저장됨</p>
      */
     @NotBlank(message = "비밀번호는 필수입니다")
-    @Size(min = 8, max = 50, message = "비밀번호는 8~50자 사이여야 합니다")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,20}$", 
+             message = "비밀번호는 8~20자의 영문, 숫자, 특수문자를 포함해야 합니다")
     private String password;
 
     /**
@@ -57,4 +60,10 @@ public class SignupRequestDto {
      */
     @Size(max = 20, message = "연락처는 20자 이내여야 합니다")
     private String phone;
+
+    /**
+     * 약관 동의 여부.
+     */
+    @AssertTrue(message = "약관 동의는 필수입니다")
+    private Boolean isAgreedToTerms;
 }

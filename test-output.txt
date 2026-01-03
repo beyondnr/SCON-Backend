@@ -1,0 +1,54 @@
+﻿> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :compileTestJava UP-TO-DATE
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+.\gradlew.bat : OpenJDK 64-Bit Server VM warning: Sharing is only supported for
+ boot loader classes because bootstrap classpath has been appended
+위치 줄:1 문자:1
++ .\gradlew.bat test --tests "*AuthControllerIntegrationTest.refreshTok ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (OpenJDK 64-Bit ...s been appended 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-01-02T22:55:28.052+09:00  INFO 42144 --- [scon-backend] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+Hibernate: 
+    drop table if exists availability_submissions cascade 
+Hibernate: 
+    drop table if exists employees cascade 
+Hibernate: 
+    drop table if exists owners cascade 
+Hibernate: 
+    drop table if exists refresh_tokens cascade 
+Hibernate: 
+    drop table if exists schedules cascade 
+Hibernate: 
+    drop table if exists shifts cascade 
+Hibernate: 
+    drop table if exists stores cascade 
+2026-01-02T22:55:28.067+09:00  INFO 42144 --- [scon-backend] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-01-02T22:55:28.071+09:00  INFO 42144 --- [scon-backend] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+> Task :test
+
+AuthController 통합 테스트 > TC-AUTH-006: 토큰 갱신 API 성공 FAILED
+    java.lang.AssertionError at AuthControllerIntegrationTest.java:183
+
+1 test completed, 1 failed
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///C:/Users/thank/Desktop/W
+orkspace/SCON-Project/SCON-Backend/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (powered by Develocity).
+
+BUILD FAILED in 26s
+5 actionable tasks: 1 executed, 4 up-to-date
