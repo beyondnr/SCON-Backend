@@ -20,6 +20,7 @@ import vibe.scon.scon_backend.entity.enums.ScheduleStatus;
 import vibe.scon.scon_backend.repository.ScheduleRepository;
 import vibe.scon.scon_backend.repository.StoreRepository;
 
+import jakarta.servlet.http.Cookie;
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -49,6 +50,7 @@ class ScheduleControllerTest {
 
     private Long storeId;
     private String accessToken;
+    private Cookie accessTokenCookie;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -66,8 +68,22 @@ class ScheduleControllerTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        accessToken = objectMapper.readTree(authResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        // HttpOnly Cookie 방식으로 변경되었으므로, Cookie에서 토큰 추출
+        String setCookieHeader = authResult.getResponse().getHeader("Set-Cookie");
+        if (setCookieHeader != null && setCookieHeader.contains("accessToken=")) {
+            // Cookie에서 accessToken 추출
+            String[] cookies = setCookieHeader.split(";");
+            for (String cookie : cookies) {
+                if (cookie.trim().startsWith("accessToken=")) {
+                    accessToken = cookie.trim().substring("accessToken=".length());
+                    accessTokenCookie = new Cookie("accessToken", accessToken);
+                    break;
+                }
+            }
+        }
+        
+        // 하위 호환성을 위해 Bearer Token도 사용 가능
+        // 테스트 편의를 위해 Bearer Token 방식도 지원
 
         // 2. 매장 생성
         StoreRequestDto storeRequest = StoreRequestDto.builder()
@@ -119,10 +135,20 @@ class ScheduleControllerTest {
         scheduleRepository.save(schedule3);
 
         // When & Then
-        mockMvc.perform(get("/api/schedules/monthly")
-                        .param("storeId", String.valueOf(storeId))
-                        .param("yearMonth", "2024-03")
-                        .header("Authorization", "Bearer " + accessToken))
+        // 경로를 /api/v1/schedules/monthly로 변경
+        // Cookie 방식 또는 Bearer Token 방식 모두 지원 (하위 호환성)
+        var requestBuilder = get("/api/v1/schedules/monthly")
+                .param("storeId", String.valueOf(storeId))
+                .param("yearMonth", "2024-03");
+        
+        // Cookie가 있으면 Cookie 사용, 없으면 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            requestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            requestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(requestBuilder)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2))) // 3월에 포함된 2개만 조회
                 .andExpect(jsonPath("$[0].weekStartDate").value("2024-02-26"))
@@ -148,8 +174,20 @@ class ScheduleControllerTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String otherUserToken = objectMapper.readTree(otherUserResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        // HttpOnly Cookie 방식으로 변경되었으므로, Cookie에서 토큰 추출
+        String otherUserSetCookieHeader = otherUserResult.getResponse().getHeader("Set-Cookie");
+        String otherUserToken = null;
+        Cookie otherUserTokenCookie = null;
+        if (otherUserSetCookieHeader != null && otherUserSetCookieHeader.contains("accessToken=")) {
+            String[] cookies = otherUserSetCookieHeader.split(";");
+            for (String cookie : cookies) {
+                if (cookie.trim().startsWith("accessToken=")) {
+                    otherUserToken = cookie.trim().substring("accessToken=".length());
+                    otherUserTokenCookie = new Cookie("accessToken", otherUserToken);
+                    break;
+                }
+            }
+        }
 
         // 다른 사용자의 매장 생성
         StoreRequestDto otherStoreRequest = StoreRequestDto.builder()
@@ -157,10 +195,18 @@ class ScheduleControllerTest {
                 .businessType("카페")
                 .build();
 
-        MvcResult otherStoreResult = mockMvc.perform(post("/api/v1/stores")
-                        .header("Authorization", "Bearer " + otherUserToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(otherStoreRequest)))
+        var otherStoreRequestBuilder = post("/api/v1/stores")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(otherStoreRequest));
+        
+        // Cookie 또는 Bearer Token 사용
+        if (otherUserTokenCookie != null) {
+            otherStoreRequestBuilder.cookie(otherUserTokenCookie);
+        } else if (otherUserToken != null) {
+            otherStoreRequestBuilder.header("Authorization", "Bearer " + otherUserToken);
+        }
+        
+        MvcResult otherStoreResult = mockMvc.perform(otherStoreRequestBuilder)
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -168,10 +214,19 @@ class ScheduleControllerTest {
                 .get("data").get("id").asLong();
 
         // When & Then - 다른 사용자의 storeId로 조회 시도 (403 Forbidden)
-        mockMvc.perform(get("/api/schedules/monthly")
-                        .param("storeId", String.valueOf(otherStoreId))
-                        .param("yearMonth", "2024-03")
-                        .header("Authorization", "Bearer " + accessToken))
+        // 경로를 /api/v1/schedules/monthly로 변경
+        var forbiddenRequestBuilder = get("/api/v1/schedules/monthly")
+                .param("storeId", String.valueOf(otherStoreId))
+                .param("yearMonth", "2024-03");
+        
+        // Cookie 또는 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            forbiddenRequestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            forbiddenRequestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(forbiddenRequestBuilder)
                 .andExpect(status().isForbidden());
     }
 }

@@ -1,10 +1,8 @@
 # Test Profile Configuration
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:sqlite:file::memory:?cache=shared
+    driver-class-name: org.sqlite.JDBC
   
   jpa:
     hibernate:
@@ -13,11 +11,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-  
-  h2:
-    console:
-      enabled: true
+        dialect: org.hibernate.community.dialect.SQLiteDialect
 
 # Application Configuration for Tests
 app:

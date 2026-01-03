@@ -1,33 +1,37 @@
 # =============================================================================
 # SCON Backend - Docker Compose Configuration
 # =============================================================================
-# MySQL 8.x 로컬 개발 환경 구성
-# 사용법: docker-compose up -d
+# SQLite는 파일 기반 데이터베이스이므로 별도의 컨테이너가 필요하지 않습니다.
+# 데이터베이스 파일은 애플리케이션과 함께 볼륨으로 마운트됩니다.
+#
+# 프로덕션 배포 시 SQLite 데이터베이스 파일 저장 경로 영구 볼륨 마운트 필요
+# 예: /var/lib/scon/data/scon_prod.db
 
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: scon-mysql
-    env_file:
-      - .env
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  mysql-data:
+# MySQL 서비스 (SQLite로 마이그레이션 완료 - 더 이상 사용하지 않음)
+# services:
+#   mysql:
+#     image: mysql:8.0
+#     container_name: scon-mysql
+#     env_file:
+#       - .env
+#     environment:
+#       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+#       MYSQL_DATABASE: ${MYSQL_DATABASE}
+#       MYSQL_USER: ${MYSQL_USER}
+#       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+#     ports:
+#       - "3307:3306"
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+#     command:
+#       - --character-set-server=utf8mb4
+#       - --collation-server=utf8mb4_unicode_ci
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#
+# volumes:
+#   mysql-data:
 
