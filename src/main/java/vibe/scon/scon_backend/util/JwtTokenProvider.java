@@ -210,6 +210,31 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 토큰에서 만료 시간 추출.
+     * 
+     * <p>토큰의 만료 시간(exp)을 LocalDateTime으로 반환합니다.</p>
+     * 
+     * @param token JWT 토큰
+     * @return 만료 시간 (LocalDateTime)
+     * @throws JwtException 토큰 파싱 실패 시
+     */
+    public java.time.LocalDateTime getExpirationDateFromToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            Date expiration = claims.getExpiration();
+            if (expiration == null) {
+                throw new IllegalArgumentException("Token expiration is null");
+            }
+            return expiration.toInstant()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDateTime();
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("Failed to extract expiration date from token: {}", e.getMessage());
+            throw new RuntimeException("토큰에서 만료 시간을 추출할 수 없습니다", e);
+        }
+    }
+
+    /**
      * 토큰에서 Claims 파싱.
      * 
      * @param token JWT 토큰

@@ -7,12 +7,18 @@ import org.springframework.transaction.annotation.Transactional;
 import vibe.scon.scon_backend.dto.store.StoreRequestDto;
 import vibe.scon.scon_backend.dto.store.StoreResponseDto;
 import vibe.scon.scon_backend.entity.Owner;
+import vibe.scon.scon_backend.entity.Schedule;
 import vibe.scon.scon_backend.entity.Store;
+import vibe.scon.scon_backend.entity.enums.ScheduleStatus;
 import vibe.scon.scon_backend.exception.ForbiddenException;
 import vibe.scon.scon_backend.exception.ResourceNotFoundException;
 import vibe.scon.scon_backend.repository.OwnerRepository;
+import vibe.scon.scon_backend.repository.ScheduleRepository;
 import vibe.scon.scon_backend.repository.StoreRepository;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,16 +44,23 @@ public class StoreService {
 
     private final StoreRepository storeRepository;
     private final OwnerRepository ownerRepository;
+    private final ScheduleRepository scheduleRepository;
 
     /**
      * 매장 생성.
      * 
-     * <p>인증된 사장님의 새 매장을 생성합니다.</p>
+     * <p>인증된 사장님의 새 매장을 생성하고, 현재 주차의 Draft 스케줄을 자동 생성합니다.</p>
      * 
      * <h4>TC-STORE-001 검증:</h4>
      * <ul>
      *   <li>Store 엔티티가 Owner와 연결되어 저장됨</li>
      *   <li>생성된 매장 정보 반환</li>
+     * </ul>
+     * 
+     * <h4>UX 플로우 (2026-01-02):</h4>
+     * <ul>
+     *   <li>매장 생성 시 현재 주차의 Draft 스케줄이 자동 생성됨</li>
+     *   <li>온보딩 완료 플래그 역할 (매장 생성 = 온보딩 완료)</li>
      * </ul>
      * 
      * @param ownerId 인증된 Owner ID
@@ -69,11 +82,15 @@ public class StoreService {
                 .address(request.getAddress())
                 .openTime(request.getOpenTime())
                 .closeTime(request.getCloseTime())
+                .storeHoliday(request.getStoreHoliday())
                 .owner(owner)
                 .build();
 
         Store savedStore = storeRepository.save(store);
         log.info("Store created successfully. storeId: {}, ownerId: {}", savedStore.getId(), ownerId);
+
+        // Draft 스케줄 자동 생성 (UX 문서 요구사항: Step 2 완료 시 자동 생성)
+        createDraftScheduleIfNotExists(savedStore);
 
         return StoreResponseDto.from(savedStore);
     }
@@ -161,7 +178,8 @@ public class StoreService {
                 request.getBusinessType(),
                 request.getAddress(),
                 request.getOpenTime(),
-                request.getCloseTime()
+                request.getCloseTime(),
+                request.getStoreHoliday()
         );
 
         log.info("Store updated successfully. storeId: {}", storeId);
@@ -182,5 +200,63 @@ public class StoreService {
                     store.getId(), ownerId, store.getOwner().getId());
             throw new ForbiddenException("해당 매장에 대한 접근 권한이 없습니다");
         }
+    }
+
+    /**
+     * Draft 스케줄 자동 생성 (매장 생성 시).
+     * 
+     * <p>현재 주차의 Draft 스케줄이 없으면 자동으로 생성합니다.
+     * 이미 존재하는 경우 생성하지 않습니다.</p>
+     * 
+     * <h4>UX 플로우 (2026-01-02):</h4>
+     * <ul>
+     *   <li>Step 2(매장 정보) 완료 시 Draft 스케줄 자동 생성</li>
+     *   <li>온보딩 완료 플래그 역할</li>
+     * </ul>
+     * 
+     * @param store 생성할 스케줄의 매장
+     */
+    private void createDraftScheduleIfNotExists(Store store) {
+        // 현재 주차의 주 시작일 계산 (월요일 기준)
+        LocalDate weekStartDate = calculateWeekStartDate();
+
+        // 이미 스케줄이 존재하는지 확인
+        if (scheduleRepository.findByStoreIdAndWeekStartDate(store.getId(), weekStartDate).isPresent()) {
+            log.debug("Schedule already exists for store. storeId: {}, weekStartDate: {}. Skipping auto-creation.",
+                    store.getId(), weekStartDate);
+            return;
+        }
+
+        // Draft 스케줄 생성
+        Schedule schedule = Schedule.builder()
+                .weekStartDate(weekStartDate)
+                .status(ScheduleStatus.DRAFT)
+                .store(store)
+                .build();
+
+        Schedule savedSchedule = scheduleRepository.save(schedule);
+        log.info("Draft schedule auto-created for new store. scheduleId: {}, storeId: {}, weekStartDate: {}",
+                savedSchedule.getId(), store.getId(), weekStartDate);
+    }
+
+    /**
+     * 현재 주차의 주 시작일(월요일) 계산.
+     * 
+     * <p>현재 날짜 기준으로 이번 주 월요일 또는 다음 주 월요일을 반환합니다.
+     * 토요일 이후라면 다음 주 월요일을 반환합니다.</p>
+     * 
+     * @return 주 시작일 (월요일)
+     */
+    private LocalDate calculateWeekStartDate() {
+        LocalDate today = LocalDate.now();
+        DayOfWeek dayOfWeek = today.getDayOfWeek();
+
+        // 토요일(6) 또는 일요일(7)이면 다음 주 월요일 반환
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            return today.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        }
+
+        // 그 외에는 이번 주 월요일 반환
+        return today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 }

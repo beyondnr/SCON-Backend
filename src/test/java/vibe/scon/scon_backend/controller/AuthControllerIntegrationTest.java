@@ -30,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>TC-AUTH-004: 로그인 성공 + JWT 발급</li>
  *   <li>TC-AUTH-005: 잘못된 비밀번호 로그인 실패 (401)</li>
  *   <li>TC-AUTH-006: 토큰 갱신 API 성공</li>
+ *   <li>TC-AUTH-010: 로그아웃 API 성공</li>
+ *   <li>TC-AUTH-011: 로그아웃 후 토큰 갱신 실패</li>
+ *   <li>TC-AUTH-012: 유효하지 않은 토큰으로 로그아웃 실패</li>
  * </ul>
  */
 @SpringBootTest
@@ -174,13 +177,14 @@ class AuthControllerIntegrationTest {
                 .refreshToken(refreshToken)
                 .build();
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(refreshRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.accessToken").exists())
-                .andExpect(jsonPath("$.data.refreshToken").exists());
+                .andExpect(jsonPath("$.data.refreshToken").exists())
+                .andReturn();
     }
 
     @Test
@@ -211,6 +215,85 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-010: 로그아웃 API 성공")
+    void logout_success() throws Exception {
+        // Given - 먼저 회원가입하여 Refresh Token 획득
+        MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        // 응답에서 refreshToken 추출
+        String responseBody = signupResult.getResponse().getContentAsString();
+        String refreshToken = objectMapper.readTree(responseBody)
+                .get("data").get("refreshToken").asText();
+
+        // When & Then - 로그아웃
+        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
+                .refreshToken(refreshToken)
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("로그아웃이 완료되었습니다"));
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-011: 로그아웃 후 토큰 갱신 실패")
+    void logout_thenRefreshToken_fails() throws Exception {
+        // Given - 회원가입하여 Refresh Token 획득
+        MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String responseBody = signupResult.getResponse().getContentAsString();
+        String refreshToken = objectMapper.readTree(responseBody)
+                .get("data").get("refreshToken").asText();
+
+        // 로그아웃
+        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
+                .refreshToken(refreshToken)
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isOk());
+
+        // When & Then - 로그아웃한 토큰으로 갱신 시도 (실패해야 함)
+        RefreshTokenRequestDto refreshRequest = RefreshTokenRequestDto.builder()
+                .refreshToken(refreshToken)
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("이미 로그아웃된 Refresh Token")));
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-012: 유효하지 않은 토큰으로 로그아웃 실패")
+    void logout_invalidToken_returns400() throws Exception {
+        // Given
+        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
+                .refreshToken("invalid.refresh.token")
+                .build();
+
+        // When & Then
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
                 .andExpect(status().isBadRequest());
     }
 }

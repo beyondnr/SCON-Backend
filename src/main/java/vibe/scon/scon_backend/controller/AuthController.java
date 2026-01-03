@@ -29,10 +29,12 @@ import vibe.scon.scon_backend.service.AuthService;
  *   <li>{@code POST /api/v1/auth/signup} - 회원가입</li>
  *   <li>{@code POST /api/v1/auth/login} - 로그인</li>
  *   <li>{@code POST /api/v1/auth/refresh} - 토큰 갱신</li>
+ *   <li>{@code POST /api/v1/auth/logout} - 로그아웃</li>
  * </ul>
  * 
  * @see AuthService
  * @see <a href="tasks/github-issues/issue-003-REQ-FUNC-001-003.md">Issue-003 §9.1</a>
+ * @see <a href="../../SCON-Update-Plan/POC-BE-FUNC-003-logout.md">POC-BE-FUNC-003</a>
  */
 @Slf4j
 @RestController
@@ -138,5 +140,43 @@ public class AuthController {
         TokenResponseDto response = authService.refreshToken(request);
         
         return ResponseEntity.ok(ApiResponse.success("토큰 갱신 성공", response));
+    }
+
+    /**
+     * 로그아웃 API.
+     * 
+     * <p>Refresh Token을 무효화하여 로그아웃을 처리합니다.</p>
+     * 
+     * <h4>TC-AUTH-010 (로그아웃 성공):</h4>
+     * <ul>
+     *   <li>Request: refreshToken</li>
+     *   <li>Response: 200 OK</li>
+     *   <li>Refresh Token이 DB에서 삭제됨</li>
+     * </ul>
+     * 
+     * <h4>TC-AUTH-011 (로그아웃 후 토큰 갱신 실패):</h4>
+     * <ul>
+     *   <li>로그아웃 후 같은 Refresh Token으로 갱신 시도</li>
+     *   <li>HTTP 400 Bad Request</li>
+     * </ul>
+     * 
+     * <h4>TC-AUTH-012 (유효하지 않은 토큰으로 로그아웃 실패):</h4>
+     * <ul>
+     *   <li>유효하지 않은 Refresh Token으로 로그아웃 시도</li>
+     *   <li>HTTP 400 Bad Request</li>
+     * </ul>
+     * 
+     * @param request 로그아웃 요청 DTO
+     * @return 성공 응답 (200 OK)
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Valid @RequestBody RefreshTokenRequestDto request) {
+        
+        log.info("Logout request received");
+        
+        authService.logout(request);
+        
+        return ResponseEntity.ok(ApiResponse.success("로그아웃이 완료되었습니다", null));
     }
 }

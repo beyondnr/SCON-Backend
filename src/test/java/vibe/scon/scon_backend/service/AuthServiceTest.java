@@ -14,11 +14,14 @@ import vibe.scon.scon_backend.dto.auth.RefreshTokenRequestDto;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
 import vibe.scon.scon_backend.dto.auth.TokenResponseDto;
 import vibe.scon.scon_backend.entity.Owner;
+import vibe.scon.scon_backend.entity.RefreshToken;
 import vibe.scon.scon_backend.exception.BadRequestException;
 import vibe.scon.scon_backend.exception.ResourceNotFoundException;
 import vibe.scon.scon_backend.repository.OwnerRepository;
+import vibe.scon.scon_backend.repository.RefreshTokenRepository;
 import vibe.scon.scon_backend.util.JwtTokenProvider;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +42,9 @@ import static org.mockito.Mockito.*;
  *   <li>TC-AUTH-005: 잘못된 비밀번호 로그인 실패 (401)</li>
  *   <li>TC-AUTH-006: 토큰 갱신 API 성공</li>
  *   <li>TC-AUTH-009: 만료된 Refresh Token 처리 (401)</li>
+ *   <li>TC-AUTH-010: 로그아웃 성공</li>
+ *   <li>TC-AUTH-011: 유효하지 않은 Refresh Token으로 로그아웃 실패</li>
+ *   <li>TC-AUTH-012: 존재하지 않는 Refresh Token으로 로그아웃 실패</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +53,9 @@ class AuthServiceTest {
 
     @Mock
     private OwnerRepository ownerRepository;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -94,6 +103,8 @@ class AuthServiceTest {
         when(ownerRepository.save(any(Owner.class))).thenReturn(testOwner);
         when(jwtTokenProvider.generateAccessToken(anyLong(), anyString())).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(anyLong())).thenReturn("refreshToken");
+        when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.signup(signupRequest);
@@ -125,6 +136,8 @@ class AuthServiceTest {
         });
         when(jwtTokenProvider.generateAccessToken(anyLong(), anyString())).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(anyLong())).thenReturn("refreshToken");
+        when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         authService.signup(signupRequest);
@@ -156,6 +169,8 @@ class AuthServiceTest {
         when(passwordEncoder.matches("Password123!", "encodedPassword")).thenReturn(true);
         when(jwtTokenProvider.generateAccessToken(1L, "test@example.com")).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(1L)).thenReturn("refreshToken");
+        when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.login(loginRequest);
@@ -205,8 +220,19 @@ class AuthServiceTest {
         when(jwtTokenProvider.isRefreshToken(validRefreshToken)).thenReturn(true);
         when(jwtTokenProvider.getOwnerIdFromToken(validRefreshToken)).thenReturn(1L);
         when(ownerRepository.findById(1L)).thenReturn(Optional.of(testOwner));
+        
+        // DB에 저장된 RefreshToken 모킹
+        RefreshToken storedToken = RefreshToken.builder()
+                .token("tokenHash")
+                .ownerId(1L)
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .build();
+        when(refreshTokenRepository.findByToken(anyString())).thenReturn(Optional.of(storedToken));
+        
         when(jwtTokenProvider.generateAccessToken(1L, "test@example.com")).thenReturn("newAccessToken");
         when(jwtTokenProvider.generateRefreshToken(1L)).thenReturn("newRefreshToken");
+        when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.refreshToken(request);
@@ -250,5 +276,79 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.refreshToken(request))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Refresh Token이 아닙니다");
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-010: 로그아웃 성공")
+    void logout_success() {
+        // Given
+        String validRefreshToken = "validRefreshToken";
+        RefreshTokenRequestDto request = RefreshTokenRequestDto.builder()
+                .refreshToken(validRefreshToken)
+                .build();
+
+        RefreshToken storedToken = RefreshToken.builder()
+                .token("tokenHash")
+                .ownerId(1L)
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .build();
+        ReflectionTestUtils.setField(storedToken, "id", 1L);
+
+        when(jwtTokenProvider.validateToken(validRefreshToken)).thenReturn(true);
+        when(jwtTokenProvider.isRefreshToken(validRefreshToken)).thenReturn(true);
+        when(refreshTokenRepository.findByToken(anyString())).thenReturn(Optional.of(storedToken));
+
+        // When
+        authService.logout(request);
+
+        // Then
+        verify(jwtTokenProvider).validateToken(validRefreshToken);
+        verify(jwtTokenProvider).isRefreshToken(validRefreshToken);
+        verify(refreshTokenRepository).findByToken(anyString());
+        verify(refreshTokenRepository).delete(storedToken);
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-011: 유효하지 않은 Refresh Token으로 로그아웃 실패")
+    void logout_invalidToken_throwsException() {
+        // Given
+        String invalidToken = "invalidRefreshToken";
+        RefreshTokenRequestDto request = RefreshTokenRequestDto.builder()
+                .refreshToken(invalidToken)
+                .build();
+
+        when(jwtTokenProvider.validateToken(invalidToken)).thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> authService.logout(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("유효하지 않은 Refresh Token");
+
+        verify(jwtTokenProvider).validateToken(invalidToken);
+        verify(refreshTokenRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("TC-AUTH-012: 존재하지 않는 Refresh Token으로 로그아웃 실패")
+    void logout_tokenNotFound_throwsException() {
+        // Given
+        String validRefreshToken = "validRefreshToken";
+        RefreshTokenRequestDto request = RefreshTokenRequestDto.builder()
+                .refreshToken(validRefreshToken)
+                .build();
+
+        when(jwtTokenProvider.validateToken(validRefreshToken)).thenReturn(true);
+        when(jwtTokenProvider.isRefreshToken(validRefreshToken)).thenReturn(true);
+        when(refreshTokenRepository.findByToken(anyString())).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> authService.logout(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("이미 로그아웃된 Refresh Token");
+
+        verify(jwtTokenProvider).validateToken(validRefreshToken);
+        verify(jwtTokenProvider).isRefreshToken(validRefreshToken);
+        verify(refreshTokenRepository).findByToken(anyString());
+        verify(refreshTokenRepository, never()).delete(any());
     }
 }

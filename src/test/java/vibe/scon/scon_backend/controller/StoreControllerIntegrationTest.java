@@ -14,9 +14,15 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
 import vibe.scon.scon_backend.dto.store.StoreRequestDto;
+import vibe.scon.scon_backend.entity.Schedule;
+import vibe.scon.scon_backend.entity.enums.ScheduleStatus;
+import vibe.scon.scon_backend.repository.ScheduleRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -46,6 +52,9 @@ class StoreControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ScheduleRepository scheduleRepository;
 
     private String accessToken;
     private Long ownerId;
@@ -81,10 +90,11 @@ class StoreControllerIntegrationTest {
                 .address("서울시 강남구 테헤란로 123")
                 .openTime(LocalTime.of(8, 0))
                 .closeTime(LocalTime.of(22, 0))
+                .storeHoliday(DayOfWeek.MONDAY) // 휴무일 추가
                 .build();
 
         // When & Then - 매장 생성은 201 Created 반환
-        mockMvc.perform(post("/api/v1/stores")
+        MvcResult result = mockMvc.perform(post("/api/v1/stores")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(storeRequest)))
@@ -92,7 +102,17 @@ class StoreControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.name").value("테스트베이커리"))
-                .andExpect(jsonPath("$.data.businessType").value("베이커리카페"));
+                .andExpect(jsonPath("$.data.businessType").value("베이커리카페"))
+                .andExpect(jsonPath("$.data.storeHoliday").value("MONDAY")) // 휴무일 검증
+                .andReturn();
+
+        // Draft 스케줄 자동 생성 검증 (UX 문서 요구사항)
+        Long storeId = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+        List<Schedule> draftSchedules = scheduleRepository.findByStoreIdAndStatus(storeId, ScheduleStatus.DRAFT);
+        assertThat(draftSchedules).hasSize(1);
+        assertThat(draftSchedules.get(0).getWeekStartDate()).isNotNull();
+        assertThat(draftSchedules.get(0).getStatus()).isEqualTo(ScheduleStatus.DRAFT);
     }
 
     @Test
@@ -147,6 +167,7 @@ class StoreControllerIntegrationTest {
                 .name("변경된이름")
                 .businessType("베이커리")
                 .address("새주소")
+                .storeHoliday(DayOfWeek.SUNDAY) // 휴무일 수정
                 .build();
 
         mockMvc.perform(put("/api/v1/stores/{id}", storeId)
@@ -156,7 +177,8 @@ class StoreControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("변경된이름"))
                 .andExpect(jsonPath("$.data.businessType").value("베이커리"))
-                .andExpect(jsonPath("$.data.address").value("새주소"));
+                .andExpect(jsonPath("$.data.address").value("새주소"))
+                .andExpect(jsonPath("$.data.storeHoliday").value("SUNDAY")); // 수정된 휴무일 검증
     }
 
     @Test
@@ -242,5 +264,35 @@ class StoreControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/stores/{id}", storeId)
                         .header("Authorization", "Bearer " + otherAccessToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("매장 생성 시 Draft 스케줄 자동 생성 (UX 플로우)")
+    void createStore_autoCreatesDraftSchedule() throws Exception {
+        // Given
+        StoreRequestDto storeRequest = StoreRequestDto.builder()
+                .name("온보딩테스트매장")
+                .businessType("카페")
+                .build();
+
+        // When - 매장 생성
+        MvcResult result = mockMvc.perform(post("/api/v1/stores")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(storeRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long storeId = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+
+        // Then - Draft 스케줄이 자동 생성되었는지 확인
+        List<Schedule> draftSchedules = scheduleRepository.findByStoreIdAndStatus(storeId, ScheduleStatus.DRAFT);
+        assertThat(draftSchedules).hasSize(1);
+        
+        Schedule draftSchedule = draftSchedules.get(0);
+        assertThat(draftSchedule.getStore().getId()).isEqualTo(storeId);
+        assertThat(draftSchedule.getStatus()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(draftSchedule.getWeekStartDate()).isNotNull();
     }
 }

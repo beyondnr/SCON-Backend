@@ -7,8 +7,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import vibe.scon.scon_backend.entity.enums.EmploymentType;
+import vibe.scon.scon_backend.entity.enums.ShiftPreset;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,6 +69,12 @@ public class Employee extends BaseEntity {
     private String phone;
 
     /**
+     * 직원 이메일 (알림 발송용)
+     */
+    @Column(length = 255)
+    private String email;
+
+    /**
      * 시급 (DECIMAL(10,2))
      */
     @Column(name = "hourly_wage", precision = 10, scale = 2)
@@ -77,6 +86,32 @@ public class Employee extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "employment_type", nullable = false, length = 20)
     private EmploymentType employmentType;
+
+    /**
+     * 근무 시프트 프리셋 (MORNING, AFTERNOON, CUSTOM)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shift_preset")
+    private ShiftPreset shiftPreset;
+
+    /**
+     * 사용자 정의 근무 시작 시간
+     */
+    @Column(name = "custom_shift_start_time")
+    private LocalTime customShiftStartTime;
+
+    /**
+     * 사용자 정의 근무 종료 시간
+     */
+    @Column(name = "custom_shift_end_time")
+    private LocalTime customShiftEndTime;
+
+    /**
+     * 개인 휴무일
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "personal_holiday")
+    private DayOfWeek personalHoliday;
 
     /**
      * 소속 매장 (ManyToOne)
@@ -103,18 +138,26 @@ public class Employee extends BaseEntity {
      * 
      * @param name 직원 이름
      * @param phone 연락처
+     * @param email 이메일
      * @param hourlyWage 시급
      * @param employmentType 고용 형태
      * @param store 소속 매장
      */
     @Builder
-    public Employee(String name, String phone, BigDecimal hourlyWage,
-                    EmploymentType employmentType, Store store) {
+    public Employee(String name, String phone, String email, BigDecimal hourlyWage,
+                    EmploymentType employmentType, Store store,
+                    ShiftPreset shiftPreset, LocalTime customShiftStartTime, LocalTime customShiftEndTime,
+                    DayOfWeek personalHoliday) {
         this.name = name;
         this.phone = phone;
+        this.email = email;
         this.hourlyWage = hourlyWage;
         this.employmentType = employmentType;
         this.store = store;
+        this.shiftPreset = shiftPreset;
+        this.customShiftStartTime = customShiftStartTime;
+        this.customShiftEndTime = customShiftEndTime;
+        this.personalHoliday = personalHoliday;
     }
 
     /**
@@ -124,14 +167,25 @@ public class Employee extends BaseEntity {
      * 
      * @param name 직원 이름
      * @param phone 연락처 (암호화된 값)
+     * @param email 이메일
      * @param hourlyWage 시급
      * @param employmentType 고용 형태
+     * @param shiftPreset 근무 프리셋
+     * @param customShiftStartTime 사용자 정의 시작 시간
+     * @param customShiftEndTime 사용자 정의 종료 시간
      */
-    public void update(String name, String phone, BigDecimal hourlyWage, EmploymentType employmentType) {
+    public void update(String name, String phone, String email, BigDecimal hourlyWage, EmploymentType employmentType,
+                       ShiftPreset shiftPreset, LocalTime customShiftStartTime, LocalTime customShiftEndTime,
+                       DayOfWeek personalHoliday) {
         if (name != null) this.name = name;
         if (phone != null) this.phone = phone;
+        if (email != null) this.email = email;
         if (hourlyWage != null) this.hourlyWage = hourlyWage;
         if (employmentType != null) this.employmentType = employmentType;
+        if (shiftPreset != null) this.shiftPreset = shiftPreset;
+        this.customShiftStartTime = customShiftStartTime; // Nullable update allow
+        this.customShiftEndTime = customShiftEndTime;     // Nullable update allow
+        this.personalHoliday = personalHoliday;           // Nullable update allow
     }
 }
 

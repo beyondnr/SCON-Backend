@@ -16,8 +16,11 @@ import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
 import vibe.scon.scon_backend.dto.employee.EmployeeRequestDto;
 import vibe.scon.scon_backend.dto.store.StoreRequestDto;
 import vibe.scon.scon_backend.entity.enums.EmploymentType;
+import vibe.scon.scon_backend.entity.enums.ShiftPreset;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -98,7 +101,9 @@ class EmployeeControllerIntegrationTest {
                 .name("김알바")
                 .phone("010-5555-6666")
                 .hourlyWage(new BigDecimal("9860"))
-                .employmentType(EmploymentType.PART_TIME)
+                .employmentType(EmploymentType.EMPLOYEE)
+                .shiftPreset(ShiftPreset.MORNING) // 새 필드 테스트
+                .personalHoliday(DayOfWeek.TUESDAY) // 개인 휴무일 추가
                 .build();
 
         // When & Then - 직원 생성은 201 Created 반환
@@ -110,7 +115,9 @@ class EmployeeControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.name").value("김알바"))
-                .andExpect(jsonPath("$.data.employmentType").value("PART_TIME"));
+                .andExpect(jsonPath("$.data.employmentType").value("EMPLOYEE"))
+                .andExpect(jsonPath("$.data.shiftPreset").value("MORNING"))
+                .andExpect(jsonPath("$.data.personalHoliday").value("TUESDAY")); // 개인 휴무일 검증
     }
 
     @Test
@@ -122,7 +129,7 @@ class EmployeeControllerIntegrationTest {
                 .name("이알바")
                 .phone(originalPhone)
                 .hourlyWage(new BigDecimal("10000"))
-                .employmentType(EmploymentType.FULL_TIME)
+                .employmentType(EmploymentType.MANAGER)
                 .build();
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
@@ -143,14 +150,14 @@ class EmployeeControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-EMP-004: 직원 수정 API 성공")
+    @DisplayName("TC-EMP-004: 직원 수정 API 성공 - 커스텀 시프트 반영")
     void updateEmployee_success() throws Exception {
         // Given - 직원 생성
         EmployeeRequestDto createRequest = EmployeeRequestDto.builder()
                 .name("원래이름")
                 .phone("010-1111-1111")
                 .hourlyWage(new BigDecimal("9860"))
-                .employmentType(EmploymentType.PART_TIME)
+                .employmentType(EmploymentType.EMPLOYEE)
                 .build();
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
@@ -163,12 +170,16 @@ class EmployeeControllerIntegrationTest {
         Long employeeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
                 .get("data").get("id").asLong();
 
-        // When & Then - 수정
+        // When & Then - 수정 (커스텀 시프트 추가)
         EmployeeRequestDto updateRequest = EmployeeRequestDto.builder()
                 .name("변경된이름")
                 .phone("010-2222-2222")
                 .hourlyWage(new BigDecimal("12000"))
-                .employmentType(EmploymentType.FULL_TIME)
+                .employmentType(EmploymentType.MANAGER)
+                .shiftPreset(ShiftPreset.CUSTOM)
+                .customShiftStartTime(LocalTime.of(9, 0))
+                .customShiftEndTime(LocalTime.of(18, 0))
+                .personalHoliday(DayOfWeek.WEDNESDAY) // 휴무일 수정
                 .build();
 
         mockMvc.perform(put("/api/v1/employees/{id}", employeeId)
@@ -178,7 +189,11 @@ class EmployeeControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("변경된이름"))
                 .andExpect(jsonPath("$.data.phone").value("010-2222-2222"))
-                .andExpect(jsonPath("$.data.employmentType").value("FULL_TIME"));
+                .andExpect(jsonPath("$.data.employmentType").value("MANAGER"))
+                .andExpect(jsonPath("$.data.shiftPreset").value("CUSTOM"))
+                .andExpect(jsonPath("$.data.customShiftStartTime").value("09:00:00"))
+                .andExpect(jsonPath("$.data.customShiftEndTime").value("18:00:00"))
+                .andExpect(jsonPath("$.data.personalHoliday").value("WEDNESDAY")); // 수정된 휴무일 검증
     }
 
     @Test
@@ -189,7 +204,7 @@ class EmployeeControllerIntegrationTest {
                 .name("삭제대상")
                 .phone("010-9999-9999")
                 .hourlyWage(new BigDecimal("9860"))
-                .employmentType(EmploymentType.PART_TIME)
+                .employmentType(EmploymentType.EMPLOYEE)
                 .build();
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
@@ -219,11 +234,11 @@ class EmployeeControllerIntegrationTest {
         // Given - 직원 2명 생성
         EmployeeRequestDto emp1 = EmployeeRequestDto.builder()
                 .name("직원1").phone("010-1111-1111")
-                .hourlyWage(new BigDecimal("9860")).employmentType(EmploymentType.PART_TIME)
+                .hourlyWage(new BigDecimal("9860")).employmentType(EmploymentType.EMPLOYEE)
                 .build();
         EmployeeRequestDto emp2 = EmployeeRequestDto.builder()
                 .name("직원2").phone("010-2222-2222")
-                .hourlyWage(new BigDecimal("10000")).employmentType(EmploymentType.FULL_TIME)
+                .hourlyWage(new BigDecimal("10000")).employmentType(EmploymentType.MANAGER)
                 .build();
 
         mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
@@ -269,5 +284,47 @@ class EmployeeControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(employeeRequest)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("TC-EMP-007: 타 사용자 직원 접근 차단 - 다른 사용자의 storeId로 조회 시 403 반환")
+    void getEmployeesByStore_otherUserStore_returns403() throws Exception {
+        // Given - 다른 사용자 계정 생성
+        SignupRequestDto otherUserSignup = SignupRequestDto.builder()
+                .email("otheruser@example.com")
+                .password("Password123!")
+                .name("다른사용자")
+                .phone("010-9999-9999")
+                .build();
+
+        MvcResult otherUserResult = mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(otherUserSignup)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String otherUserToken = objectMapper.readTree(otherUserResult.getResponse().getContentAsString())
+                .get("data").get("accessToken").asText();
+
+        // 다른 사용자의 매장 생성
+        StoreRequestDto otherStoreRequest = StoreRequestDto.builder()
+                .name("다른사용자매장")
+                .businessType("베이커리")
+                .build();
+
+        MvcResult otherStoreResult = mockMvc.perform(post("/api/v1/stores")
+                        .header("Authorization", "Bearer " + otherUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(otherStoreRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long otherStoreId = objectMapper.readTree(otherStoreResult.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+
+        // When & Then - 다른 사용자의 storeId로 조회 시도 (403 Forbidden)
+        mockMvc.perform(get("/api/v1/stores/{storeId}/employees", otherStoreId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
     }
 }

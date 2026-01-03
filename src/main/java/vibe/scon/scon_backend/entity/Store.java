@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +75,13 @@ public class Store extends BaseEntity {
     private LocalTime closeTime;
 
     /**
+     * 정기 휴무일
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "store_holiday")
+    private DayOfWeek storeHoliday;
+
+    /**
      * 매장 소유자 (ManyToOne)
      */
     @Setter
@@ -105,12 +113,13 @@ public class Store extends BaseEntity {
      */
     @Builder
     public Store(String name, String businessType, String address,
-                 LocalTime openTime, LocalTime closeTime, Owner owner) {
+                 LocalTime openTime, LocalTime closeTime, DayOfWeek storeHoliday, Owner owner) {
         this.name = name;
         this.businessType = businessType;
         this.address = address;
         this.openTime = openTime;
         this.closeTime = closeTime;
+        this.storeHoliday = storeHoliday;
         this.owner = owner;
     }
 
@@ -146,12 +155,13 @@ public class Store extends BaseEntity {
      * @param closeTime 영업 종료 시간
      */
     public void update(String name, String businessType, String address,
-                       LocalTime openTime, LocalTime closeTime) {
+                       LocalTime openTime, LocalTime closeTime, DayOfWeek storeHoliday) {
         if (name != null) this.name = name;
         if (businessType != null) this.businessType = businessType;
         if (address != null) this.address = address;
         if (openTime != null) this.openTime = openTime;
         if (closeTime != null) this.closeTime = closeTime;
+        this.storeHoliday = storeHoliday; // Nullable update allow
     }
 }
 

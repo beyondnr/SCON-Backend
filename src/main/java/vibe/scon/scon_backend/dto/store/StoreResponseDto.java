@@ -6,8 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import vibe.scon.scon_backend.entity.Store;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
 
 /**
  * 매장 응답 DTO.
@@ -59,6 +61,11 @@ public class StoreResponseDto {
     private LocalTime closeTime;
 
     /**
+     * 정기 휴무일.
+     */
+    private DayOfWeek storeHoliday;
+
+    /**
      * 소유자 ID.
      */
     private Long ownerId;
@@ -92,6 +99,7 @@ public class StoreResponseDto {
                 .address(store.getAddress())
                 .openTime(store.getOpenTime())
                 .closeTime(store.getCloseTime())
+                .storeHoliday(store.getStoreHoliday())
                 .ownerId(store.getOwner().getId())
                 .employeeCount(store.getEmployees() != null ? store.getEmployees().size() : 0)
                 .createdAt(store.getCreatedAt())

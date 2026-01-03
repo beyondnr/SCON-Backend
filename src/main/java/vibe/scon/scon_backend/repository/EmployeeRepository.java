@@ -1,6 +1,8 @@
 package vibe.scon.scon_backend.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import vibe.scon.scon_backend.entity.Employee;
 
 import java.util.List;
@@ -28,5 +30,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
      * @return 직원 목록
      */
     List<Employee> findByStoreId(Long storeId);
+    
+    /**
+     * 특정 Owner가 소유한 매장의 직원 목록 조회
+     * 
+     * <p>보안 강화를 위해 ownerId를 포함한 쿼리 레벨 필터링을 제공합니다.</p>
+     * 
+     * <h3>요구사항 추적 (Traceability):</h3>
+     * <ul>
+     *   <li>{@code POC-BE-SEC-001} - 데이터 격리 및 접근 제어 개선</li>
+     * </ul>
+     * 
+     * @param storeId Store ID
+     * @param ownerId Owner ID (추가 검증용)
+     * @return 직원 목록
+     */
+    @Query("SELECT e FROM Employee e WHERE e.store.id = :storeId AND e.store.owner.id = :ownerId")
+    List<Employee> findByStoreIdAndOwnerId(@Param("storeId") Long storeId, @Param("ownerId") Long ownerId);
 }
 

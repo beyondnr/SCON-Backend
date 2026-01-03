@@ -37,6 +37,9 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	
+	// Rate Limiting (POC-BE-SEC-002: 무차별 대입 공격 방어)
+	implementation 'com.bucket4j:bucket4j-core:8.7.0'
 
 	// Database (MySQL)
 	runtimeOnly 'com.mysql:mysql-connector-j'
@@ -47,6 +50,9 @@ dependencies {
 
 	// H2 Database for Development
 	runtimeOnly 'com.h2database:h2'
+
+	// SpringDoc OpenAPI (Swagger UI) - POC API 문서화
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
