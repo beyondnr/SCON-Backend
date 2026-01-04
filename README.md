@@ -49,6 +49,7 @@ SCON은 다음과 같은 핵심 가치를 제공합니다:
 ### Architecture & Integration
 - **Architecture**: Monolithic Service (MVP Phase)
 - **API Style**: RESTful API (JSON) with versioning (`/api/v1/...`)
+- **Authentication**: HttpOnly Cookie 기반 JWT 인증 (하위 호환: Bearer Token)
 - **API Documentation**: Swagger/OpenAPI 3.0 (SpringDoc)
 - **Document Gen**: Python + FastAPI + LangChain (Microservice)
 - **External**: KakaoTalk/SMS Gateway, OpenAI/Gemini (LLM for future expansion)
@@ -72,6 +73,30 @@ src/main/java/vibe/scon/scon_backend
 ---
 
 ## 🔐 Security & Environment Management
+
+### 인증 및 보안 기능
+
+SCON 백엔드는 다음과 같은 인증 및 보안 기능을 제공합니다:
+
+#### 인증 방식
+- **HttpOnly Cookie 기반 JWT 인증**: XSS 공격 방지를 위한 HttpOnly Cookie 사용
+  - Access Token: 30분 유효 (HttpOnly Cookie)
+  - Refresh Token: 7일 유효 (HttpOnly Cookie)
+  - 하위 호환: Bearer Token 방식 지원
+- **자동 토큰 갱신**: Refresh Token을 통한 자동 Access Token 갱신
+- **로그아웃 시 토큰 무효화**: Refresh Token DB 삭제로 즉시 무효화
+
+#### 보안 기능
+- **CORS 설정**: 환경별 Origin 관리 (개발: `localhost:9002`, 프로덕션: 환경변수 설정)
+- **Security 헤더**: 
+  - `X-Frame-Options: DENY` (Clickjacking 방지)
+  - `X-Content-Type-Options: nosniff` (MIME 타입 스니핑 방지)
+  - `X-XSS-Protection: 1; mode=block` (XSS 공격 방지)
+  - `Content-Security-Policy` (CSP) 설정
+  - `Strict-Transport-Security` (HSTS) - 프로덕션 환경
+- **Rate Limiting**: 로그인/회원가입 API에 5회/분 제한 (Brute-force 공격 방지)
+- **계정 잠금**: 5회 로그인 실패 시 30분 계정 잠금
+- **에러 메시지 일반화**: 민감 정보 노출 최소화 (이메일 존재 여부 등)
 
 ### 보안 관리 방침
 
@@ -208,13 +233,16 @@ curl http://localhost:8080/api/v1/health
 
 ## 📚 Documentation
 
-더 자세한 설계 및 요구사항 문서는 `docs/` 디렉토리를 참고해 주세요.
+더 자세한 설계 및 요구사항 문서는 `SCON-Docs/` 디렉토리를 참고해 주세요.
 
 | 문서 | 설명 |
 |------|------|
-| `docs/GPT-SRS_v0.2.md` | 소프트웨어 요구사항 명세서 (SRS) |
-| `docs/GPT-PRD.md` | 제품 요구사항 문서 (PRD) |
-| `docs/WBS_DAG.md` | 작업 분해 구조 |
+| `SCON-Docs/API_Spec-260102.md` | API 명세서 (HttpOnly Cookie 인증 방식 포함) |
+| `SCON-Docs/Integration-Plan-260102.md` | 프론트엔드-백엔드 통합 연동 계획서 |
+| `SCON-Docs/GPT-SRS_v0.2.md` | 소프트웨어 요구사항 명세서 (SRS) |
+| `SCON-Docs/GPT-PRD.md` | 제품 요구사항 문서 (PRD) |
+| `SCON-Update-Plan/POC-BE-SYNC-001.md` | 백엔드 연동 작업 계획서 (HttpOnly Cookie) |
+| `SCON-Update-Plan/POC-BE-SEC-002.md` | 백엔드 보안 강화 작업 계획서 |
 
 ### 환경변수 참조
 
