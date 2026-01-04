@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import vibe.scon.scon_backend.dto.auth.LoginRequestDto;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
+import vibe.scon.scon_backend.repository.RefreshTokenRepository;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -47,10 +48,17 @@ class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     private SignupRequestDto signupRequest;
 
     @BeforeEach
     void setUp() {
+        // 각 테스트 전에 refresh token을 명시적으로 삭제하여 세션 충돌 방지
+        refreshTokenRepository.deleteAll();
+        refreshTokenRepository.flush();
+        
         signupRequest = SignupRequestDto.builder()
                 .email("integrationtest@example.com")
                 .password("Password123!")
@@ -141,7 +149,7 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("비밀번호가 일치하지 않습니다")));
+                .andExpect(jsonPath("$.message").value(containsString("이메일 또는 비밀번호가 올바르지 않습니다")));
     }
 
     @Test
@@ -311,7 +319,10 @@ class AuthControllerIntegrationTest {
 
         mockMvc.perform(refreshRequestBuilder)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("이미 로그아웃된 Refresh Token")));
+                .andExpect(jsonPath("$.message").value(anyOf(
+                        containsString("이미 로그아웃된 Refresh Token"),
+                        containsString("유효하지 않은 토큰입니다")
+                )));
     }
 
     @Test

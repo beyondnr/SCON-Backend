@@ -330,9 +330,12 @@ public class AuthService {
     /**
      * JWT 토큰 응답 생성.
      * 
+     * <p>새로운 트랜잭션에서 실행하여 세션 충돌을 방지합니다.</p>
+     * 
      * @param owner Owner 엔티티
      * @return 토큰 응답 DTO
      */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     private TokenResponseDto generateTokenResponse(Owner owner) {
         try {
             Long ownerId = owner.getId();
@@ -356,6 +359,11 @@ public class AuthService {
             LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateFromToken(refreshToken);
             
             // Refresh Token 해시 생성 및 DB 저장
+            // 기존 refresh token 삭제 (한 사용자는 하나의 활성 refresh token만 유지)
+            refreshTokenRepository.deleteByOwnerId(ownerId);
+            entityManager.flush(); // 삭제를 즉시 반영
+            entityManager.clear(); // 세션 완전히 정리하여 NonUniqueObjectException 방지
+            
             String tokenHash = generateTokenHash(refreshToken);
             RefreshToken refreshTokenEntity = RefreshToken.builder()
                     .token(tokenHash)
