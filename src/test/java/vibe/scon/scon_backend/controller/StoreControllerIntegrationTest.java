@@ -75,8 +75,28 @@ class StoreControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
+        // Cookie에서 accessToken 추출
+        jakarta.servlet.http.Cookie[] cookies = result.getResponse().getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    accessToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        // Cookie에서 토큰을 찾지 못한 경우 응답 본문에서 추출 시도 (하위 호환성)
         String responseBody = result.getResponse().getContentAsString();
-        accessToken = objectMapper.readTree(responseBody).get("data").get("accessToken").asText();
+        if (accessToken == null) {
+            try {
+                accessToken = objectMapper.readTree(responseBody).get("data").get("accessToken").asText();
+            } catch (Exception e) {
+                // 토큰이 응답 본문에 없는 경우 (Cookie 방식)
+                accessToken = null;
+            }
+        }
+        
         ownerId = objectMapper.readTree(responseBody).get("data").get("ownerId").asLong();
     }
 
@@ -257,8 +277,28 @@ class StoreControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String otherAccessToken = objectMapper.readTree(otherResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        // Cookie에서 accessToken 추출
+        String otherAccessToken = null;
+        jakarta.servlet.http.Cookie[] otherUserCookies = otherResult.getResponse().getCookies();
+        if (otherUserCookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : otherUserCookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    otherAccessToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        // Cookie에서 토큰을 찾지 못한 경우 응답 본문에서 추출 시도 (하위 호환성)
+        if (otherAccessToken == null) {
+            try {
+                otherAccessToken = objectMapper.readTree(otherResult.getResponse().getContentAsString())
+                        .get("data").get("accessToken").asText();
+            } catch (Exception e) {
+                // 토큰이 응답 본문에 없는 경우 (Cookie 방식)
+                otherAccessToken = null;
+            }
+        }
 
         // When & Then - 다른 사용자가 접근 시도
         mockMvc.perform(get("/api/v1/stores/{id}", storeId)

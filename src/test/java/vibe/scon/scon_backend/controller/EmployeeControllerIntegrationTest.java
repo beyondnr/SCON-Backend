@@ -73,8 +73,28 @@ class EmployeeControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        accessToken = objectMapper.readTree(authResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        // Cookie에서 accessToken 추출
+        jakarta.servlet.http.Cookie[] cookies = authResult.getResponse().getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    accessToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        // Cookie에서 토큰을 찾지 못한 경우 null로 설정 (하위 호환성을 위해 Bearer Token도 지원)
+        if (accessToken == null) {
+            // 응답 본문에서 토큰 추출 시도 (하위 호환성)
+            try {
+                accessToken = objectMapper.readTree(authResult.getResponse().getContentAsString())
+                        .get("data").get("accessToken").asText();
+            } catch (Exception e) {
+                // 토큰이 응답 본문에 없는 경우 (Cookie 방식)
+                accessToken = null;
+            }
+        }
 
         // 매장 생성 - 201 Created 반환
         StoreRequestDto storeRequest = StoreRequestDto.builder()
@@ -303,8 +323,28 @@ class EmployeeControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String otherUserToken = objectMapper.readTree(otherUserResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        // Cookie에서 accessToken 추출
+        String otherUserToken = null;
+        jakarta.servlet.http.Cookie[] otherUserCookies = otherUserResult.getResponse().getCookies();
+        if (otherUserCookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : otherUserCookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    otherUserToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        // Cookie에서 토큰을 찾지 못한 경우 응답 본문에서 추출 시도 (하위 호환성)
+        if (otherUserToken == null) {
+            try {
+                otherUserToken = objectMapper.readTree(otherUserResult.getResponse().getContentAsString())
+                        .get("data").get("accessToken").asText();
+            } catch (Exception e) {
+                // 토큰이 응답 본문에 없는 경우 (Cookie 방식)
+                otherUserToken = null;
+            }
+        }
 
         // 다른 사용자의 매장 생성
         StoreRequestDto otherStoreRequest = StoreRequestDto.builder()

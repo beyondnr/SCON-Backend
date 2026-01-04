@@ -26,6 +26,11 @@ public class HealthResponse {
     private final LocalDateTime timestamp = LocalDateTime.now();
 
     /**
+     * Application name.
+     */
+    private final String applicationName;
+
+    /**
      * Application version (optional).
      */
     private final String version;

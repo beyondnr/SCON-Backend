@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import jakarta.persistence.EntityManager;
 import vibe.scon.scon_backend.dto.auth.LoginRequestDto;
 import vibe.scon.scon_backend.dto.auth.RefreshTokenRequestDto;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
@@ -63,6 +64,9 @@ class AuthServiceTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private AuthService authService;
 
@@ -80,6 +84,9 @@ class AuthServiceTest {
                 .phone("010-1234-5678")
                 .build();
         ReflectionTestUtils.setField(testOwner, "id", 1L);
+        
+        // entityManager를 ReflectionTestUtils로 주입
+        ReflectionTestUtils.setField(authService, "entityManager", entityManager);
 
         signupRequest = SignupRequestDto.builder()
                 .email("test@example.com")
@@ -104,7 +111,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateAccessToken(anyLong(), anyString())).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(anyLong())).thenReturn("refreshToken");
         when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.signup(signupRequest);
@@ -137,7 +144,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateAccessToken(anyLong(), anyString())).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(anyLong())).thenReturn("refreshToken");
         when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         authService.signup(signupRequest);
@@ -167,10 +174,11 @@ class AuthServiceTest {
         // Given
         when(ownerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testOwner));
         when(passwordEncoder.matches("Password123!", "encodedPassword")).thenReturn(true);
+        when(ownerRepository.save(any(Owner.class))).thenReturn(testOwner); // 실패 횟수 리셋을 위한 save
         when(jwtTokenProvider.generateAccessToken(1L, "test@example.com")).thenReturn("accessToken");
         when(jwtTokenProvider.generateRefreshToken(1L)).thenReturn("refreshToken");
         when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.login(loginRequest);
@@ -188,11 +196,12 @@ class AuthServiceTest {
         // Given
         when(ownerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testOwner));
         when(passwordEncoder.matches("Password123!", "encodedPassword")).thenReturn(false);
+        when(ownerRepository.save(any(Owner.class))).thenReturn(testOwner); // 실패 횟수 증가를 위한 save
 
         // When & Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("비밀번호가 일치하지 않습니다");
+                .hasMessageContaining("이메일 또는 비밀번호가 올바르지 않습니다");
     }
 
     @Test
@@ -202,9 +211,10 @@ class AuthServiceTest {
         when(ownerRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
 
         // When & Then
+        // POC-BE-SEC-002: 이메일 존재 여부 노출 방지를 위해 BadRequestException 반환
         assertThatThrownBy(() -> authService.login(loginRequest))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("등록되지 않은 이메일");
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("이메일 또는 비밀번호가 올바르지 않습니다");
     }
 
     @Test
@@ -221,24 +231,37 @@ class AuthServiceTest {
         when(jwtTokenProvider.getOwnerIdFromToken(validRefreshToken)).thenReturn(1L);
         when(ownerRepository.findById(1L)).thenReturn(Optional.of(testOwner));
         
-        // DB에 저장된 RefreshToken 모킹
+        // generateTokenHash가 실제로 호출되므로 anyString()으로 스텁
+        // DB에 저장된 RefreshToken 모킹 (isUsed()와 isExpired() 메서드를 위한 설정)
         RefreshToken storedToken = RefreshToken.builder()
-                .token("tokenHash")
+                .token("anyHashValue") // 실제 해시값과 일치하지 않아도 anyString()으로 스텁했으므로 OK
                 .ownerId(1L)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
+        // isUsed는 기본값이 false이므로 별도 설정 불필요
         when(refreshTokenRepository.findByToken(anyString())).thenReturn(Optional.of(storedToken));
+        
+        // markAsUsed() 후 save() 호출을 위한 스텁
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // deleteByOwnerId는 호출되지 않아야 하므로 never()로 검증
+        doNothing().when(refreshTokenRepository).deleteByOwnerId(anyLong());
+        
+        // entityManager.flush() 호출을 위한 스텁
+        doNothing().when(entityManager).flush();
         
         when(jwtTokenProvider.generateAccessToken(1L, "test@example.com")).thenReturn("newAccessToken");
         when(jwtTokenProvider.generateRefreshToken(1L)).thenReturn("newRefreshToken");
         when(jwtTokenProvider.getExpirationDateFromToken(anyString())).thenReturn(LocalDateTime.now().plusDays(7));
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         TokenResponseDto response = authService.refreshToken(request);
 
         // Then
         assertThat(response).isNotNull();
+        assertThat(response.getOwnerId()).isEqualTo(1L);
+        assertThat(response.getEmail()).isEqualTo("test@example.com");
         assertThat(response.getAccessToken()).isEqualTo("newAccessToken");
         assertThat(response.getRefreshToken()).isEqualTo("newRefreshToken");
     }

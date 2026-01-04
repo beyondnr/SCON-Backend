@@ -68,43 +68,27 @@ public class SecurityConfig {
     /**
      * Security Filter Chain 설정 (개발 환경).
      * 
-     * <p>개발 환경에서는 H2 콘솔 접근을 허용합니다.</p>
-     * 
-     * <h3>요구사항 추적 (Traceability):</h3>
-     * <ul>
-     *   <li>{@code POC-BE-SEC-002} - 백엔드 보안 강화 (H2 콘솔 접근 제어)</li>
-     * </ul>
-     * 
      * @param http HttpSecurity 객체
      * @return 구성된 SecurityFilterChain
      * @throws Exception 설정 실패 시
-     * @see <a href="../../SCON-Update-Plan/POC-BE-SEC-002.md">POC-BE-SEC-002</a>
      */
     @Bean
     @Profile({"dev", "local", "!prod"})
     public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
-        return buildSecurityFilterChain(http, true); // H2 콘솔 허용
+        return buildSecurityFilterChain(http);
     }
 
     /**
      * Security Filter Chain 설정 (프로덕션 환경).
      * 
-     * <p>프로덕션 환경에서는 H2 콘솔 접근을 완전히 차단합니다.</p>
-     * 
-     * <h3>요구사항 추적 (Traceability):</h3>
-     * <ul>
-     *   <li>{@code POC-BE-SEC-002} - 백엔드 보안 강화 (H2 콘솔 접근 제어)</li>
-     * </ul>
-     * 
      * @param http HttpSecurity 객체
      * @return 구성된 SecurityFilterChain
      * @throws Exception 설정 실패 시
-     * @see <a href="../../SCON-Update-Plan/POC-BE-SEC-002.md">POC-BE-SEC-002</a>
      */
     @Bean
     @Profile("prod")
     public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
-        return buildSecurityFilterChain(http, false); // H2 콘솔 차단
+        return buildSecurityFilterChain(http);
     }
 
     /**
@@ -113,11 +97,10 @@ public class SecurityConfig {
      * <p>공통 Security 설정을 구성합니다.</p>
      * 
      * @param http HttpSecurity 객체
-     * @param allowH2Console H2 콘솔 허용 여부
      * @return 구성된 SecurityFilterChain
      * @throws Exception 설정 실패 시
      */
-    private SecurityFilterChain buildSecurityFilterChain(HttpSecurity http, boolean allowH2Console) throws Exception {
+    private SecurityFilterChain buildSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 // CORS 설정 적용 (프론트엔드 연동을 위해 필수)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -141,11 +124,6 @@ public class SecurityConfig {
                             "/api/v1/health"
                     ).permitAll();
                     
-                    // H2 콘솔은 개발 환경에서만 허용 (POC-BE-SEC-002)
-                    if (allowH2Console) {
-                        auth.requestMatchers("/h2-console/**").permitAll();
-                    }
-                    
                     // Swagger/OpenAPI (추후 추가 시)
                     auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
                     
@@ -155,14 +133,14 @@ public class SecurityConfig {
                 
                 // Security 헤더 설정 (POC-BE-SEC-002)
                 .headers(headers -> headers
-                        // Clickjacking 방어: DENY (H2 콘솔은 개발 환경에서만 sameOrigin 허용)
+                        // Clickjacking 방어: DENY (프로덕션), sameOrigin (개발 환경)
                         .frameOptions(frameOptions -> {
                             String activeProfile = environment.getProperty("spring.profiles.active", "dev");
                             boolean isProduction = "prod".equals(activeProfile) || "production".equals(activeProfile);
                             if (isProduction) {
                                 frameOptions.deny();
                             } else {
-                                frameOptions.sameOrigin(); // 개발 환경: H2 콘솔 허용
+                                frameOptions.sameOrigin(); // 개발 환경
                             }
                         })
                         // MIME 스니핑 방어

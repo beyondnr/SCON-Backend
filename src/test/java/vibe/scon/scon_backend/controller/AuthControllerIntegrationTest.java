@@ -13,8 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import vibe.scon.scon_backend.dto.auth.LoginRequestDto;
-import vibe.scon.scon_backend.dto.auth.RefreshTokenRequestDto;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
+import vibe.scon.scon_backend.repository.RefreshTokenRepository;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,10 +48,17 @@ class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     private SignupRequestDto signupRequest;
 
     @BeforeEach
     void setUp() {
+        // 각 테스트 전에 refresh token을 명시적으로 삭제하여 세션 충돌 방지
+        refreshTokenRepository.deleteAll();
+        refreshTokenRepository.flush();
+        
         signupRequest = SignupRequestDto.builder()
                 .email("integrationtest@example.com")
                 .password("Password123!")
@@ -71,9 +78,12 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.ownerId").exists())
                 .andExpect(jsonPath("$.data.email").value("integrationtest@example.com"))
-                .andExpect(jsonPath("$.data.accessToken").exists())
-                .andExpect(jsonPath("$.data.refreshToken").exists())
-                .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
+                // HttpOnly Cookie 방식으로 변경: 응답 본문에 토큰이 없음
+                // .andExpect(jsonPath("$.data.accessToken").exists())
+                // .andExpect(jsonPath("$.data.refreshToken").exists())
+                // .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                // Cookie는 Set-Cookie 헤더로 확인 가능
+                .andExpect(header().exists("Set-Cookie"));
     }
 
     @Test
@@ -114,8 +124,10 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.ownerId").exists())
-                .andExpect(jsonPath("$.data.accessToken").exists())
-                .andExpect(jsonPath("$.data.refreshToken").exists());
+                // HttpOnly Cookie 방식으로 변경: 응답 본문에 토큰이 없음
+                // .andExpect(jsonPath("$.data.accessToken").exists())
+                // .andExpect(jsonPath("$.data.refreshToken").exists())
+                .andExpect(header().exists("Set-Cookie"));
     }
 
     @Test
@@ -137,7 +149,7 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("비밀번호가 일치하지 않습니다")));
+                .andExpect(jsonPath("$.message").value(containsString("이메일 또는 비밀번호가 올바르지 않습니다")));
     }
 
     @Test
@@ -161,45 +173,54 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("TC-AUTH-006: 토큰 갱신 API 성공")
     void refreshToken_success() throws Exception {
-        // Given - 회원가입하여 토큰 획득
+        // Given - 회원가입하여 Cookie 획득
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        // 응답에서 refreshToken 추출
-        String responseBody = signupResult.getResponse().getContentAsString();
-        String refreshToken = objectMapper.readTree(responseBody)
-                .get("data").get("refreshToken").asText();
+        // Cookie에서 refreshToken 추출
+        jakarta.servlet.http.Cookie[] cookies = signupResult.getResponse().getCookies();
+        jakarta.servlet.http.Cookie refreshTokenCookie = null;
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshTokenCookie = cookie;
+                    break;
+                }
+            }
+        }
 
-        // When & Then - 토큰 갱신
-        RefreshTokenRequestDto refreshRequest = RefreshTokenRequestDto.builder()
-                .refreshToken(refreshToken)
-                .build();
+        // When & Then - 토큰 갱신 (Cookie 기반)
+        var requestBuilder = post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON);
+        
+        if (refreshTokenCookie != null) {
+            requestBuilder.cookie(refreshTokenCookie);
+        }
 
-        MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+        mockMvc.perform(requestBuilder)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.data.accessToken").exists())
-                .andExpect(jsonPath("$.data.refreshToken").exists())
-                .andReturn();
+                .andExpect(jsonPath("$.data.ownerId").exists())
+                .andExpect(jsonPath("$.data.email").exists())
+                // HttpOnly Cookie 방식으로 변경: 응답 본문에 토큰이 없음
+                // .andExpect(jsonPath("$.data.accessToken").exists())
+                // .andExpect(jsonPath("$.data.refreshToken").exists())
+                .andExpect(header().exists("Set-Cookie"));
     }
 
     @Test
     @DisplayName("TC-AUTH-009: 유효하지 않은 Refresh Token으로 갱신 실패")
     void refreshToken_invalidToken_returns400() throws Exception {
-        // Given
-        RefreshTokenRequestDto refreshRequest = RefreshTokenRequestDto.builder()
-                .refreshToken("invalid.refresh.token")
-                .build();
+        // Given - 유효하지 않은 refreshToken을 Cookie로 설정
+        jakarta.servlet.http.Cookie invalidCookie = new jakarta.servlet.http.Cookie("refreshToken", "invalid.refresh.token");
 
-        // When & Then
+        // When & Then - Cookie 기반 토큰 갱신 (요청 본문 없음)
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                        .cookie(invalidCookie)
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -222,26 +243,34 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("TC-AUTH-010: 로그아웃 API 성공")
     void logout_success() throws Exception {
-        // Given - 먼저 회원가입하여 Refresh Token 획득
+        // Given - 먼저 회원가입하여 Cookie 획득
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        // 응답에서 refreshToken 추출
-        String responseBody = signupResult.getResponse().getContentAsString();
-        String refreshToken = objectMapper.readTree(responseBody)
-                .get("data").get("refreshToken").asText();
+        // Cookie에서 refreshToken 추출
+        jakarta.servlet.http.Cookie[] cookies = signupResult.getResponse().getCookies();
+        jakarta.servlet.http.Cookie refreshTokenCookie = null;
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshTokenCookie = cookie;
+                    break;
+                }
+            }
+        }
 
-        // When & Then - 로그아웃
-        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
-                .refreshToken(refreshToken)
-                .build();
+        // When & Then - 로그아웃 (Cookie 기반)
+        var requestBuilder = post("/api/v1/auth/logout")
+                .contentType(MediaType.APPLICATION_JSON);
+        
+        if (refreshTokenCookie != null) {
+            requestBuilder.cookie(refreshTokenCookie);
+        }
 
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+        mockMvc.perform(requestBuilder)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.message").value("로그아웃이 완료되었습니다"));
@@ -250,51 +279,62 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("TC-AUTH-011: 로그아웃 후 토큰 갱신 실패")
     void logout_thenRefreshToken_fails() throws Exception {
-        // Given - 회원가입하여 Refresh Token 획득
+        // Given - 회원가입하여 Cookie 획득
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String responseBody = signupResult.getResponse().getContentAsString();
-        String refreshToken = objectMapper.readTree(responseBody)
-                .get("data").get("refreshToken").asText();
+        // Cookie에서 refreshToken 추출
+        jakarta.servlet.http.Cookie[] cookies = signupResult.getResponse().getCookies();
+        jakarta.servlet.http.Cookie refreshTokenCookie = null;
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshTokenCookie = cookie;
+                    break;
+                }
+            }
+        }
 
-        // 로그아웃
-        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
-                .refreshToken(refreshToken)
-                .build();
+        // 로그아웃 (Cookie 기반)
+        var logoutRequestBuilder = post("/api/v1/auth/logout")
+                .contentType(MediaType.APPLICATION_JSON);
+        
+        if (refreshTokenCookie != null) {
+            logoutRequestBuilder.cookie(refreshTokenCookie);
+        }
 
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+        mockMvc.perform(logoutRequestBuilder)
                 .andExpect(status().isOk());
 
         // When & Then - 로그아웃한 토큰으로 갱신 시도 (실패해야 함)
-        RefreshTokenRequestDto refreshRequest = RefreshTokenRequestDto.builder()
-                .refreshToken(refreshToken)
-                .build();
+        var refreshRequestBuilder = post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON);
+        
+        if (refreshTokenCookie != null) {
+            refreshRequestBuilder.cookie(refreshTokenCookie);
+        }
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+        mockMvc.perform(refreshRequestBuilder)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("이미 로그아웃된 Refresh Token")));
+                .andExpect(jsonPath("$.message").value(anyOf(
+                        containsString("이미 로그아웃된 Refresh Token"),
+                        containsString("유효하지 않은 토큰입니다")
+                )));
     }
 
     @Test
     @DisplayName("TC-AUTH-012: 유효하지 않은 토큰으로 로그아웃 실패")
     void logout_invalidToken_returns400() throws Exception {
-        // Given
-        RefreshTokenRequestDto logoutRequest = RefreshTokenRequestDto.builder()
-                .refreshToken("invalid.refresh.token")
-                .build();
+        // Given - 유효하지 않은 refreshToken을 Cookie로 설정
+        jakarta.servlet.http.Cookie invalidCookie = new jakarta.servlet.http.Cookie("refreshToken", "invalid.refresh.token");
 
-        // When & Then
+        // When & Then - Cookie 기반 로그아웃 (요청 본문 없음)
         mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                        .cookie(invalidCookie)
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -34,7 +34,7 @@ public abstract class BaseEntity {
 
     /**
      * Primary key with auto-increment strategy.
-     * Uses MySQL's AUTO_INCREMENT for ID generation.
+     * Uses AUTO_INCREMENT for ID generation (MySQL) or AUTOINCREMENT (SQLite).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

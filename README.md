@@ -43,12 +43,13 @@ SCON은 다음과 같은 핵심 가치를 제공합니다:
 - **Language**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.x
 - **Build Tool**: Gradle
-- **Database**: MySQL 8.x (InnoDB)
+- **Database**: SQLite (파일 기반)
 - **ORM**: Spring Data JPA (Hibernate)
 
 ### Architecture & Integration
 - **Architecture**: Monolithic Service (MVP Phase)
-- **API Style**: RESTful API (JSON)
+- **API Style**: RESTful API (JSON) with versioning (`/api/v1/...`)
+- **API Documentation**: Swagger/OpenAPI 3.0 (SpringDoc)
 - **Document Gen**: Python + FastAPI + LangChain (Microservice)
 - **External**: KakaoTalk/SMS Gateway, OpenAI/Gemini (LLM for future expansion)
 
@@ -80,7 +81,7 @@ SCON 백엔드는 민감한 정보를 안전하게 관리하기 위해 다음과
 
 | 카테고리 | 환경변수 | 보안 등급 | 설명 |
 |----------|----------|-----------|------|
-| **Database** | `MYSQL_*` | 🔴 Critical | MySQL 접속 정보 |
+| **Database** | `SQLITE_DB_PATH` | 🟡 Medium | SQLite 데이터베이스 파일 경로 (선택) |
 | **JWT** | `JWT_SECRET_KEY` | 🔴 Critical | 인증 토큰 서명 키 (최소 32자) |
 | **Encryption** | `ENCRYPTION_KEY` | 🔴 Critical | PII 암호화 키 (AES-256) |
 | **AI APIs** | `OPENAI_API_KEY`, `GEMINI_API_KEY` | 🔴 Critical | AI 모델 API 키 |
@@ -163,13 +164,10 @@ cp .env.example .env
 
 ```properties
 # =============================================================================
-# DATABASE (필수)
+# DATABASE (SQLite - 선택)
 # =============================================================================
-MYSQL_HOST=localhost
-MYSQL_PORT=3307
-MYSQL_DATABASE=scon_db
-MYSQL_USER=scon
-MYSQL_PASSWORD=your_secure_password    # 실제 비밀번호로 변경
+# SQLite 데이터베이스 파일 경로 (기본값: ./data/scon_local.db)
+# SQLITE_DB_PATH=./data/scon_local.db
 
 # =============================================================================
 # SECURITY (프로덕션에서 필수)
@@ -187,17 +185,9 @@ OPENAI_API_KEY=sk-your_openai_api_key
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-### 3. Database Setup (Docker)
+**참고**: SQLite는 파일 기반 데이터베이스이므로 별도의 데이터베이스 서버가 필요하지 않습니다. 기본적으로 `./data/` 디렉토리에 데이터베이스 파일이 생성됩니다.
 
-```bash
-# MySQL 컨테이너 시작
-docker-compose up -d
-
-# 상태 확인
-docker-compose ps
-```
-
-### 4. Build & Run
+### 3. Build & Run
 
 ```bash
 # 빌드
@@ -207,11 +197,11 @@ docker-compose ps
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-### 5. Health Check
+### 4. Health Check
 
 ```bash
 # API 헬스 체크
-curl http://localhost:8080/api/health
+curl http://localhost:8080/api/v1/health
 ```
 
 ---

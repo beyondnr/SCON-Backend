@@ -41,18 +41,20 @@ dependencies {
 	// Rate Limiting (POC-BE-SEC-002: 무차별 대입 공격 방어)
 	implementation 'com.bucket4j:bucket4j-core:8.7.0'
 
-	// Database (MySQL)
-	runtimeOnly 'com.mysql:mysql-connector-j'
+	// Database (SQLite)
+	runtimeOnly 'org.xerial:sqlite-jdbc'
+	// SQLite Dialect for Hibernate
+	implementation 'org.hibernate.orm:hibernate-community-dialects'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
-	// H2 Database for Development
-	runtimeOnly 'com.h2database:h2'
-
 	// SpringDoc OpenAPI (Swagger UI) - POC API 문서화
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+	// .env 파일 자동 로드
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -62,4 +64,9 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// Plain JAR 생성 비활성화 (Executable JAR만 생성)
+jar {
+	enabled = false
 }

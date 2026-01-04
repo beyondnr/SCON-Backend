@@ -2,6 +2,7 @@ package vibe.scon.scon_backend.config.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import java.util.Collections;
 /**
  * JWT 인증 필터.
  * 
- * <p>HTTP 요청의 Authorization 헤더에서 JWT 토큰을 추출하고 검증합니다.
+ * <p>HTTP 요청의 Cookie 또는 Authorization 헤더에서 JWT 토큰을 추출하고 검증합니다.
  * 유효한 토큰인 경우 SecurityContext에 인증 정보를 설정합니다.</p>
  * 
  * <h3>요구사항 추적 (Traceability):</h3>
@@ -28,11 +29,13 @@ import java.util.Collections;
  *   <li>{@code REQ-FUNC-001} - 3단계 온보딩 마법사 (JWT 인증)</li>
  *   <li>{@code TC-AUTH-007} - 만료된 Access Token 처리</li>
  *   <li>{@code TC-AUTH-008} - 유효하지 않은 토큰 처리</li>
+ *   <li>{@code POC-BE-SYNC-001} - HttpOnly Cookie 인증 지원</li>
  * </ul>
  * 
  * <h3>처리 흐름:</h3>
  * <ol>
- *   <li>Authorization 헤더에서 Bearer 토큰 추출</li>
+ *   <li>Cookie에서 accessToken 추출 시도 (우선)</li>
+ *   <li>없으면 Authorization 헤더에서 Bearer 토큰 추출 (하위 호환성)</li>
  *   <li>토큰 유효성 검증 (서명, 만료)</li>
  *   <li>유효한 경우 SecurityContext에 인증 정보 설정</li>
  *   <li>다음 필터로 요청 전달</li>
@@ -114,15 +117,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * HTTP 요청에서 JWT 토큰 추출.
      * 
-     * <p>Authorization 헤더에서 "Bearer " 접두사 이후의 토큰을 추출합니다.</p>
+     * <p>Cookie에서 accessToken을 먼저 확인하고, 없으면 Authorization 헤더에서 추출합니다.
+     * 하위 호환성을 위해 Authorization 헤더도 계속 지원합니다.</p>
+     * 
+     * <h3>우선순위:</h3>
+     * <ol>
+     *   <li>Cookie에서 accessToken 추출 (우선)</li>
+     *   <li>Authorization 헤더에서 Bearer 토큰 추출 (하위 호환성)</li>
+     * </ol>
      * 
      * @param request HTTP 요청
      * @return 추출된 토큰 문자열, 없으면 null
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
+        // 1. Cookie에서 accessToken 추출 시도 (우선)
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    String token = cookie.getValue();
+                    if (StringUtils.hasText(token)) {
+                        log.debug("Token extracted from Cookie");
+                        return token;
+                    }
+                }
+            }
+        }
         
+        // 2. Authorization 헤더에서 토큰 추출 (하위 호환성)
+        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
+            log.debug("Token extracted from Authorization header");
             return bearerToken.substring(BEARER_PREFIX.length());
         }
         
@@ -146,7 +171,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.equals("/health") ||
                path.equals("/api/health") ||
                path.equals("/api/v1/health") ||
-               path.startsWith("/h2-console") ||
                path.startsWith("/swagger-ui") ||
                path.startsWith("/v3/api-docs");
     }

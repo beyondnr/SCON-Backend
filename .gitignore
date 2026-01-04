@@ -52,3 +52,7 @@ secrets/
 ### Local Storage ###
 storage/
 uploads/
+data/
+*.db
+*.db-shm
+*.db-wal

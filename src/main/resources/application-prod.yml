@@ -3,24 +3,27 @@
 # =============================================================================
 
 spring:
-  # MySQL Database for Production
+  # SQLite Database for Production
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:scon_db}?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:sqlite:${SQLITE_DB_PATH:/var/lib/scon/data/scon_prod.db}
+    driver-class-name: org.sqlite.JDBC
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
-      idle-timeout: 300000
-      connection-timeout: 20000
+      # SQLite는 단일 연결이므로 풀 크기 조정
+      maximum-pool-size: 1
+      minimum-idle: 1
+      connection-timeout: 30000
+      # SQLite 특성: WAL 모드 활성화 권장
+      connection-init-sql: "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"
 
   # JPA Production Settings
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate  # 프로덕션에서는 validate 또는 none
     show-sql: false
-    database-platform: org.hibernate.dialect.MySQLDialect
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
 
 # CORS Configuration - Production
 # 프로덕션 환경에서는 반드시 환경 변수 CORS_ALLOWED_ORIGINS를 설정해야 합니다.
