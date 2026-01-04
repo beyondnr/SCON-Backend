@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 import java.nio.file.Files;
@@ -29,6 +30,7 @@ import java.nio.file.Paths;
 @Slf4j
 @Configuration
 @EnableJpaAuditing
+@Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 public class JpaConfig {
     
     @Value("${spring.datasource.url}")
@@ -38,7 +40,8 @@ public class JpaConfig {
      * 애플리케이션 시작 시 SQLite 데이터베이스 디렉토리를 자동 생성합니다.
      * 데이터베이스 파일 경로에서 디렉토리 부분을 추출하여 생성합니다.
      * 
-     * <p>이 메서드는 Spring 컨텍스트 초기화 후, 데이터소스 연결 전에 실행됩니다.</p>
+     * <p>이 메서드는 Spring Bean 초기화 시점에 가장 먼저 실행됩니다.
+     * {@code @Order(HIGHEST_PRECEDENCE)}로 설정하여 다른 Bean보다 먼저 초기화됩니다.</p>
      */
     @PostConstruct
     public void ensureDatabaseDirectoryExists() {
