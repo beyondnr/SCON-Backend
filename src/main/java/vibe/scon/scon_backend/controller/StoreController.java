@@ -8,8 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vibe.scon.scon_backend.dto.ApiResponse;
+import vibe.scon.scon_backend.dto.async.AsyncTaskResponseDto;
 import vibe.scon.scon_backend.dto.store.StoreRequestDto;
 import vibe.scon.scon_backend.dto.store.StoreResponseDto;
+import vibe.scon.scon_backend.entity.enums.TaskStatus;
+import vibe.scon.scon_backend.service.AsyncStoreService;
+import vibe.scon.scon_backend.service.AsyncTaskService;
 import vibe.scon.scon_backend.service.StoreService;
 
 import java.util.List;
@@ -44,6 +48,8 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
+    private final AsyncStoreService asyncStoreService;
+    private final AsyncTaskService asyncTaskService;
 
     /**
      * 매장 생성 API.
@@ -169,5 +175,54 @@ public class StoreController {
         StoreResponseDto response = storeService.updateStore(ownerId, id, request);
         
         return ResponseEntity.ok(ApiResponse.success("매장 정보가 수정되었습니다", response));
+    }
+    
+    /**
+     * 매장 생성 (비동기).
+     * 
+     * <p>매장 생성 요청을 비동기로 처리합니다. 즉시 202 Accepted 응답을 반환하고,
+     * 실제 작업은 백그라운드에서 진행됩니다.</p>
+     * 
+     * <h3>응답 플로우:</h3>
+     * <ol>
+     *   <li>요청 즉시: 202 Accepted + taskId 반환</li>
+     *   <li>클라이언트: GET /api/v1/tasks/{taskId}로 상태 확인 (폴링)</li>
+     *   <li>완료 후: GET /api/v1/tasks/{taskId}/result로 결과 조회</li>
+     * </ol>
+     * 
+     * <h3>요구사항 추적:</h3>
+     * <ul>
+     *   <li>{@code Async Processing Plan Phase 3}: 매장 생성 비동기화</li>
+     * </ul>
+     * 
+     * @param authentication 인증 정보 (ownerId)
+     * @param request 매장 생성 요청 DTO
+     * @return 작업 접수 응답 (202 Accepted)
+     */
+    @PostMapping("/async")
+    public ResponseEntity<ApiResponse<AsyncTaskResponseDto>> createStoreAsync(
+            Authentication authentication,
+            @Valid @RequestBody StoreRequestDto request) {
+        
+        Long ownerId = (Long) authentication.getPrincipal();
+        log.info("Create store async request. ownerId: {}, storeName: {}", ownerId, request.getName());
+        
+        // 작업 생성
+        String taskId = asyncTaskService.createTask("STORE_CREATE", ownerId, request);
+        
+        // 비동기 작업 시작
+        asyncStoreService.createStoreAsync(taskId, ownerId, request);
+        
+        // 즉시 응답 (202 Accepted)
+        AsyncTaskResponseDto response = AsyncTaskResponseDto.builder()
+                .taskId(taskId)
+                .status(TaskStatus.IN_PROGRESS)
+                .taskType("STORE_CREATE")
+                .progress(0)
+                .build();
+        
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("매장 생성 요청이 접수되었습니다", response));
     }
 }

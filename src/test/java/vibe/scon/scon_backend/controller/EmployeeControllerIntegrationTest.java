@@ -217,6 +217,75 @@ class EmployeeControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("INTG-SETTINGS-004: 직원 정보 부분 수정 테스트")
+    void updateEmployee_partialUpdate_success() throws Exception {
+        // Given - 직원 생성 (모든 필드 포함)
+        EmployeeRequestDto createRequest = EmployeeRequestDto.builder()
+                .name("부분수정직원")
+                .phone("010-1111-2222")
+                .hourlyWage(new BigDecimal("9860"))
+                .employmentType(EmploymentType.EMPLOYEE)
+                .shiftPreset(ShiftPreset.MORNING)
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long employeeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+
+        // When & Then - 부분 수정 (이름과 시급만 수정)
+        // employmentType은 @NotNull이므로 필수 (부분 수정 시에도 기존 값 전달 필요)
+        EmployeeRequestDto partialUpdateRequest = EmployeeRequestDto.builder()
+                .name("부분수정된직원") // 이름 수정 (필수)
+                .phone(null) // 전화번호는 수정하지 않음
+                .hourlyWage(new BigDecimal("12000")) // 시급만 수정
+                .employmentType(EmploymentType.EMPLOYEE) // 고용형태는 @NotNull이므로 기존 값 전달 (필수)
+                .shiftPreset(null) // 근무 프리셋은 수정하지 않음
+                .personalHoliday(null) // 휴무일은 null로 업데이트
+                .build();
+
+        mockMvc.perform(put("/api/v1/employees/{id}", employeeId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(partialUpdateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("부분수정된직원"))
+                .andExpect(jsonPath("$.data.hourlyWage").value(12000))
+                .andExpect(jsonPath("$.data.phone").value("010-1111-2222")) // 기존 값 유지 (복호화됨)
+                .andExpect(jsonPath("$.data.employmentType").value("EMPLOYEE")) // 변경되지 않음
+                .andExpect(jsonPath("$.data.shiftPreset").value("MORNING")); // 변경되지 않음
+    }
+
+    @Test
+    @DisplayName("INTG-SETTINGS-006: 직원 등록 시 유효성 검증 실패 테스트 (fieldErrors 포함)")
+    void createEmployee_validationFailure_returnsFieldErrors() throws Exception {
+        // Given - 유효하지 않은 직원 요청 (name이 null, employmentType이 null)
+        EmployeeRequestDto invalidRequest = EmployeeRequestDto.builder()
+                .name(null) // @NotBlank 검증 실패
+                .phone("010-1111-2222")
+                .hourlyWage(new BigDecimal("9860"))
+                .employmentType(null) // @NotNull 검증 실패
+                .build();
+
+        // When & Then
+        mockMvc.perform(post("/api/v1/stores/{storeId}/employees", storeId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(greaterThan(0))))
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("name"))) // name 필드 에러 포함
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("employmentType"))); // employmentType 필드 에러 포함
+    }
+
+    @Test
     @DisplayName("TC-EMP-005: 직원 삭제 API 성공")
     void deleteEmployee_success() throws Exception {
         // Given - 직원 생성
@@ -366,5 +435,19 @@ class EmployeeControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/stores/{storeId}/employees", otherStoreId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("INTG-DASHBOARD-003: 직원이 없는 경우 빈 배열 반환 확인")
+    void getEmployeesByStore_emptyArray_success() throws Exception {
+        // Given - 매장은 생성되어 있지만 직원은 등록하지 않음 (setUp에서 생성된 매장 사용)
+        
+        // When & Then - 직원이 없는 경우 빈 배열 반환 확인
+        mockMvc.perform(get("/api/v1/stores/{storeId}/employees", storeId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("직원 목록 조회 성공"))
+                .andExpect(jsonPath("$.data", hasSize(0))); // 빈 배열
     }
 }

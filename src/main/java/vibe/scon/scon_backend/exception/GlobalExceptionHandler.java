@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -24,11 +25,17 @@ import java.util.stream.Collectors;
  * <h3>Handled Exceptions:</h3>
  * <ul>
  *   <li>{@link MethodArgumentNotValidException} - Bean validation errors (400)</li>
+ *   <li>{@link MissingServletRequestParameterException} - Missing required request parameters (400)</li>
  *   <li>{@link MethodArgumentTypeMismatchException} - Type conversion errors (400)</li>
  *   <li>{@link ResourceNotFoundException} - Resource not found (404)</li>
  *   <li>{@link BadRequestException} - Bad request (400)</li>
  *   <li>{@link BusinessException} - Business logic errors (varies)</li>
  *   <li>{@link Exception} - Unexpected errors (500)</li>
+ * </ul>
+ * 
+ * <h4>INTG-BE-Phase3-v1.1.0 (2026-01-10):</h4>
+ * <ul>
+ *   <li>MissingServletRequestParameterException 핸들러 추가 (Query Parameters 검증)</li>
  * </ul>
  */
 @Slf4j
@@ -74,7 +81,35 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles type mismatch errors (e.g., invalid path variable format).
+     * Handles missing required request parameter errors.
+     * This occurs when a required @RequestParam is missing from the request.
+     *
+     * @param ex      The missing parameter exception
+     * @param request The HTTP request
+     * @return ResponseEntity with HTTP 400
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+            MissingServletRequestParameterException ex,
+            HttpServletRequest request) {
+
+        String message = String.format("Required parameter '%s' is missing", ex.getParameterName());
+
+        log.warn("Missing required parameter for request [{}]: {}", request.getRequestURI(), message);
+
+        ErrorResponse response = ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "MISSING_PARAMETER",
+                message,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
+     * Handles type mismatch errors (e.g., invalid path variable format, invalid query parameter format).
+     * This includes @DateTimeFormat parsing failures.
      *
      * @param ex      The type mismatch exception
      * @param request The HTTP request

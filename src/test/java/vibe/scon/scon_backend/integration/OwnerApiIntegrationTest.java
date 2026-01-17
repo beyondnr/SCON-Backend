@@ -203,8 +203,8 @@ class OwnerApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-OWNER-009: 유효성 검증 실패 (name 100자 초과)")
-    void updateOwnerProfile_nameTooLong_throwsBadRequest() throws Exception {
+    @DisplayName("TC-OWNER-009: 유효성 검증 실패 (name 100자 초과) - fieldErrors 포함 검증")
+    void updateOwnerProfile_nameTooLong_returnsFieldErrors() throws Exception {
         // Given
         String longName = "a".repeat(101); // 101자
         UpdateOwnerProfileRequest request = new UpdateOwnerProfileRequest(longName, null);
@@ -216,7 +216,51 @@ class OwnerApiIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(greaterThan(0))))
+                .andExpect(jsonPath("$.fieldErrors[0].field").exists())
+                .andExpect(jsonPath("$.fieldErrors[0].message").exists())
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("name"))); // name 필드 에러 포함
+    }
+
+    @Test
+    @DisplayName("TC-OWNER-012: 유효성 검증 실패 (phone 형식 오류) - fieldErrors 포함 검증")
+    void updateOwnerProfile_invalidPhoneFormat_returnsFieldErrors() throws Exception {
+        // Given - 잘못된 전화번호 형식
+        UpdateOwnerProfileRequest request = new UpdateOwnerProfileRequest(null, "123-456-789");
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/owners/me")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(greaterThan(0))))
+                .andExpect(jsonPath("$.fieldErrors[0].field").exists())
+                .andExpect(jsonPath("$.fieldErrors[0].message").exists())
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("phone"))); // phone 필드 에러 포함
+                // .andExpect(jsonPath("$.fieldErrors[*].message", hasItem(containsString("010-XXXX-XXXX")))); // 메시지 확인
+    }
+
+    @Test
+    @DisplayName("TC-OWNER-013: 유효성 검증 실패 (phone 20자 초과)")
+    void updateOwnerProfile_phoneTooLong_returnsFieldErrors() throws Exception {
+        // Given - 20자 초과 전화번호
+        String longPhone = "010-" + "1".repeat(10) + "-" + "2".repeat(10); // 20자 초과
+        UpdateOwnerProfileRequest request = new UpdateOwnerProfileRequest(null, longPhone);
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/owners/me")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(greaterThan(0))))
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("phone"))); // phone 필드 에러 포함
     }
 
     @Test

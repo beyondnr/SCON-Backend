@@ -10,7 +10,9 @@ import vibe.scon.scon_backend.entity.Employee;
 import vibe.scon.scon_backend.entity.Store;
 import vibe.scon.scon_backend.exception.ForbiddenException;
 import vibe.scon.scon_backend.exception.ResourceNotFoundException;
+import vibe.scon.scon_backend.repository.AvailabilitySubmissionRepository;
 import vibe.scon.scon_backend.repository.EmployeeRepository;
+import vibe.scon.scon_backend.repository.ShiftRepository;
 import vibe.scon.scon_backend.repository.StoreRepository;
 import vibe.scon.scon_backend.util.EncryptionUtil;
 
@@ -42,6 +44,8 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final StoreRepository storeRepository;
+    private final ShiftRepository shiftRepository;
+    private final AvailabilitySubmissionRepository availabilitySubmissionRepository;
     private final EncryptionUtil encryptionUtil;
 
     /**
@@ -192,6 +196,10 @@ public class EmployeeService {
         String responsePhone = request.getPhone();
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             encryptedPhone = encryptionUtil.encrypt(request.getPhone());
+        } else {
+            // phone이 null이면 기존 값을 복호화하여 응답에 포함 (부분 수정 지원)
+            // Employee.update()에서 null 체크로 인해 기존 값이 유지되지만, 응답에서는 복호화된 값 전달
+            responsePhone = decryptPhone(employee.getPhone());
         }
 
         // 직원 정보 업데이트
@@ -235,6 +243,19 @@ public class EmployeeService {
         // 소유권 확인
         validateEmployeeOwnership(employee, ownerId);
 
+        // 관련 데이터 삭제 (cascade로 자동 삭제되지만, 명시적으로 삭제하여 확실하게 처리)
+        // Employee 엔티티에 cascade = CascadeType.ALL, orphanRemoval = true 설정되어 있지만,
+        // Shift를 직접 생성하고 저장하면 Employee의 shifts 컬렉션에 자동으로 추가되지 않을 수 있음
+        // 따라서 명시적으로 관련 데이터를 삭제하여 데이터 정합성을 보장
+        // INTG-BE-Phase4-v1.1.0: 직원 삭제 시 관련 데이터 처리 확인
+        
+        // Shift 삭제 (외래키 제약조건을 고려하여 명시적으로 삭제)
+        shiftRepository.findByEmployeeId(employeeId).forEach(shiftRepository::delete);
+        
+        // AvailabilitySubmission 삭제
+        availabilitySubmissionRepository.findByEmployeeId(employeeId)
+                .forEach(availabilitySubmissionRepository::delete);
+        
         employeeRepository.delete(employee);
         log.info("Employee deleted. employeeId: {}", employeeId);
     }

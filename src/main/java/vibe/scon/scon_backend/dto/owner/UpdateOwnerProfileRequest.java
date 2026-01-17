@@ -1,5 +1,6 @@
 package vibe.scon.scon_backend.dto.owner;
 
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -37,11 +38,14 @@ public class UpdateOwnerProfileRequest {
     private String name;
 
     /**
-     * 휴대폰 번호 (최대 20자).
+     * 휴대폰 번호 (010-XXXX-XXXX 형식).
      * 
-     * <p>선택 필드이며 null 또는 빈 문자열 허용합니다. 빈 문자열은 null로 처리됩니다.</p>
+     * <p>선택 필드이며 null 허용합니다. 빈 문자열은 null로 처리됩니다.</p>
+     * <p>제공된 경우 010-XXXX-XXXX 형식이어야 합니다.</p>
+     * <p>빈 문자열은 Service 레이어에서 null로 변환되므로, @Pattern 검증 전에 빈 문자열 처리 필요</p>
      */
     @Size(max = 20, message = "휴대폰 번호는 최대 20자까지 입력 가능합니다")
+    @Pattern(regexp = "^$|^010-\\d{4}-\\d{4}$", message = "휴대폰 번호는 010-XXXX-XXXX 형식으로 입력해주세요")
     private String phone;
 }
 
