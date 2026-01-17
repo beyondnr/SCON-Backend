@@ -6,7 +6,7 @@
     <springProperty scope="context" name="VIBE_SCON_LOG_LEVEL" source="logging.level.vibe.scon" defaultValue="DEBUG"/>
     
     <!-- 로그 파일 이름 -->
-    <property name="LOG_FILE_NAME" value="scon-backend"/>
+    <property name="LOG_FILE_NAME" value="application"/>
     <property name="API_LOG_FILE_NAME" value="api-requests"/>
 
     <!-- 콘솔 출력 패턴 -->
@@ -33,8 +33,11 @@
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 매일 자정에 파일 분리: application.2024-01-06.log 형식 -->
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 로그 보관 기간: 30일 -->
             <maxHistory>30</maxHistory>
+            <!-- 전체 로그 폴더 크기 제한: 1GB -->
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
     </appender>
