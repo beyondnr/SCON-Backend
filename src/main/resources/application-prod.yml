@@ -32,6 +32,14 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # API Request/Response Logging Configuration (Production)
+  # ─────────────────────────────────────────────────────────────────────────
+  logging:
+    # 프로덕션 환경에서는 기본적으로 비활성화
+    enable-request-logging: ${ENABLE_API_REQUEST_LOGGING:false}
+    enable-response-logging: ${ENABLE_API_RESPONSE_LOGGING:false}
+
 # Logging - Production level
 logging:
   level:

@@ -54,3 +54,9 @@ app:
   encryption:
     key: ${ENCRYPTION_KEY:}
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # API Request/Response Logging Configuration (Development)
+  # ─────────────────────────────────────────────────────────────────────────
+  logging:
+    enable-request-logging: ${ENABLE_API_REQUEST_LOGGING:true}
+    enable-response-logging: ${ENABLE_API_RESPONSE_LOGGING:true}
