@@ -20,6 +20,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vibe.scon.scon_backend.config.filter.JwtAuthenticationFilter;
 import vibe.scon.scon_backend.config.filter.RateLimitingFilter;
+import vibe.scon.scon_backend.config.filter.RequestIdTrackingFilter;
+import vibe.scon.scon_backend.config.filter.RequestResponseLoggingFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +65,8 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final RequestIdTrackingFilter requestIdTrackingFilter;
+    private final RequestResponseLoggingFilter requestResponseLoggingFilter;
     private final Environment environment;
 
     /**
@@ -158,12 +162,25 @@ public class SecurityConfig {
                         ))
                 )
                 
+                // 필터 등록 순서:
+                // 1. RateLimitingFilter (가장 먼저 실행 - POC-BE-SEC-002)
+                // 2. RequestIdTrackingFilter (Request ID 추적 - 신규 추가)
+                // 3. JwtAuthenticationFilter (JWT 토큰 검증)
+                // 4. RequestResponseLoggingFilter (요청/응답 로깅)
+                // 5. UsernamePasswordAuthenticationFilter (Spring Security 기본 필터)
+                
                 // Rate Limiting 필터 추가 (가장 먼저 실행 - POC-BE-SEC-002)
                 // RateLimitingFilter 내부에서 테스트 프로파일 확인하여 비활성화
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 
+                // Request ID Tracking 필터 추가 (RateLimitingFilter와 JwtAuthenticationFilter 사이)
+                .addFilterBefore(requestIdTrackingFilter, JwtAuthenticationFilter.class)
+                
                 // JWT 필터 추가 (UsernamePasswordAuthenticationFilter 이전에 실행)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                
+                // Request/Response Logging 필터 추가 (JwtAuthenticationFilter 이후 실행)
+                .addFilterAfter(requestResponseLoggingFilter, JwtAuthenticationFilter.class)
                 
                 // 예외 처리: 인증 실패 시 401 반환
                 .exceptionHandling(exception -> exception
@@ -254,7 +271,8 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
-                "X-Requested-With"
+                "X-Requested-With",
+                "X-Request-ID"  // Request ID 추적용 헤더
         ));
         
         // 자격 증명(쿠키, Authorization 헤더) 허용
@@ -264,7 +282,10 @@ public class SecurityConfig {
         configuration.setMaxAge(3600L);
         
         // 노출할 응답 헤더
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setExposedHeaders(List.of(
+                "Authorization",
+                "X-Request-ID"  // Request ID 추적용 헤더
+        ));
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

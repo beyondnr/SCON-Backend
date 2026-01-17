@@ -30,6 +30,8 @@ logging:
   level:
     root: INFO
     vibe.scon: ${LOG_LEVEL:DEBUG}
+  file:
+    path: ${LOG_PATH:./logs}
 
 # =============================================================================
 # Application Custom Properties
@@ -99,3 +101,12 @@ app:
       secret-key: ${AWS_SECRET_KEY:}
       region: ${AWS_REGION:ap-northeast-2}
       s3-bucket: ${S3_BUCKET_NAME:scon-evidence}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # API Request/Response Logging Configuration
+  # ─────────────────────────────────────────────────────────────────────────
+  logging:
+    # API 요청 로깅 활성화 여부 (기본값: true)
+    enable-request-logging: ${ENABLE_API_REQUEST_LOGGING:true}
+    # API 응답 로깅 활성화 여부 (기본값: true)
+    enable-response-logging: ${ENABLE_API_RESPONSE_LOGGING:true}

@@ -56,6 +56,9 @@ dependencies {
 	// .env 파일 자동 로드
 	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 
+	// ULID 생성 라이브러리 (Request ID 추적용)
+	implementation 'com.github.f4b6a3:ulid-creator:5.2.3'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
