@@ -1,5 +1,6 @@
 package vibe.scon.scon_backend.config.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,8 +9,10 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vibe.scon.scon_backend.dto.ErrorResponse;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -48,6 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final Environment environment;
+    private final ObjectMapper objectMapper;
 
     // IP별 요청 횟수 추적 (메모리 기반, 프로덕션에서는 Redis 사용 권장)
     private final Map<String, RateLimitInfo> rateLimitMap = new ConcurrentHashMap<>();
@@ -102,11 +106,32 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             // Rate Limit 초과 시
             if (info.getCount() > MAX_REQUESTS) {
                 log.warn("Rate limit exceeded for IP: {}, path: {}", clientIp, path);
-                response.setStatus(429); // TOO_MANY_REQUESTS
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write(
-                        "{\"status\":429,\"message\":\"너무 많은 요청입니다. 잠시 후 다시 시도해주세요.\"}"
+                
+                // 표준 ErrorResponse 형식으로 응답 (INTG-BE-Phase2-v1.1.0)
+                ErrorResponse errorResponse = ErrorResponse.of(
+                        429,
+                        "TOO_MANY_REQUESTS",
+                        "너무 많은 요청입니다. 잠시 후 다시 시도해주세요.",
+                        path
                 );
+                
+                response.setStatus(429); // HttpStatus.TOO_MANY_REQUESTS (429)
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.setCharacterEncoding("UTF-8");
+                
+                try {
+                    String jsonResponse = objectMapper.writeValueAsString(errorResponse);
+                    response.getWriter().write(jsonResponse);
+                } catch (Exception e) {
+                    log.error("Failed to serialize ErrorResponse to JSON", e);
+                    // 폴백: 간단한 JSON 응답
+                    response.getWriter().write(
+                            "{\"status\":429,\"error\":\"TOO_MANY_REQUESTS\"," +
+                            "\"message\":\"너무 많은 요청입니다. 잠시 후 다시 시도해주세요.\"," +
+                            "\"path\":\"" + path + "\",\"timestamp\":\"" +
+                            java.time.LocalDateTime.now() + "\"}"
+                    );
+                }
                 return;
             }
         }

@@ -10,8 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @Slf4j
 @SpringBootApplication
+@EnableScheduling
 public class SconBackendApplication {
 
 	public static void main(String[] args) {

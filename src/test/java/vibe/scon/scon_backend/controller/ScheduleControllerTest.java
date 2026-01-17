@@ -229,5 +229,90 @@ class ScheduleControllerTest {
         mockMvc.perform(forbiddenRequestBuilder)
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("INTG-DASHBOARD-003: 스케줄이 없는 경우 빈 배열 반환 확인")
+    void getMonthlySchedules_emptyArray_success() throws Exception {
+        // Given - 매장은 생성되어 있지만 스케줄은 없음 (setUp에서 생성된 매장 사용)
+        
+        // When & Then - 스케줄이 없는 경우 빈 배열 반환 확인 (ApiResponse 래퍼 없음)
+        var requestBuilder = get("/api/v1/schedules/monthly")
+                .param("storeId", String.valueOf(storeId))
+                .param("yearMonth", "2024-12"); // 스케줄이 없는 월
+        
+        // Cookie 또는 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            requestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            requestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0))); // 빈 배열 (ApiResponse 래퍼 없음)
+    }
+
+    @Test
+    @DisplayName("INTG-DASHBOARD-004: Query Parameters 검증 - yearMonth 파라미터 누락 시 400 Bad Request")
+    void getMonthlySchedules_missingYearMonth_returns400() throws Exception {
+        // Given - 매장은 생성되어 있음 (setUp에서 생성된 매장 사용)
+        
+        // When & Then - yearMonth 파라미터 누락 시 400 Bad Request
+        var requestBuilder = get("/api/v1/schedules/monthly")
+                .param("storeId", String.valueOf(storeId));
+        // yearMonth 파라미터 누락
+        
+        // Cookie 또는 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            requestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            requestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("INTG-DASHBOARD-004: Query Parameters 검증 - 잘못된 yearMonth 형식 시 400 Bad Request")
+    void getMonthlySchedules_invalidYearMonthFormat_returns400() throws Exception {
+        // Given - 매장은 생성되어 있음 (setUp에서 생성된 매장 사용)
+        
+        // When & Then - 잘못된 yearMonth 형식 시 400 Bad Request
+        var requestBuilder = get("/api/v1/schedules/monthly")
+                .param("storeId", String.valueOf(storeId))
+                .param("yearMonth", "2024/03"); // 잘못된 형식 (yyyy-MM이어야 함)
+        
+        // Cookie 또는 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            requestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            requestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("INTG-DASHBOARD-004: Query Parameters 검증 - storeId 파라미터 누락 시 400 Bad Request")
+    void getMonthlySchedules_missingStoreId_returns400() throws Exception {
+        // Given - 매장은 생성되어 있음 (setUp에서 생성된 매장 사용)
+        
+        // When & Then - storeId 파라미터 누락 시 400 Bad Request
+        var requestBuilder = get("/api/v1/schedules/monthly")
+                .param("yearMonth", "2024-03");
+        // storeId 파라미터 누락
+        
+        // Cookie 또는 Bearer Token 사용
+        if (accessTokenCookie != null) {
+            requestBuilder.cookie(accessTokenCookie);
+        } else if (accessToken != null) {
+            requestBuilder.header("Authorization", "Bearer " + accessToken);
+        }
+        
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
+    }
 }
 

@@ -1,4 +1,4 @@
-# Fix: SQLite 데이터베이스 디렉토리 자동 생성 로직 추가
+# Fix: SQLite 데이터베이스 디렉토리 자동 생성 로직 추가 및 실행 시점 개선
 
 ## 문제 상황
 클라우드타입 배포 시 SQLite 데이터베이스 연결 에러 발생:
@@ -8,19 +8,34 @@ path to './data/scon_dev.db': '/app/./data' does not exist
 
 애플리케이션 시작 시 데이터베이스 파일이 저장될 디렉토리가 존재하지 않아 SQLite 연결 실패.
 
+**원인 분석**: 
+- `@PostConstruct` 메서드가 데이터소스 초기화보다 늦게 실행되어 디렉토리 생성 전에 연결 시도
+- 데이터소스 초기화 시점에 디렉토리가 없어 에러 발생
+
 ## 해결 방법
 
 ### 변경 사항
-1. **JpaConfig에 디렉토리 자동 생성 로직 추가**
+1. **SconBackendApplication.main()에서 Spring 시작 전 디렉토리 생성**
+   - `main` 메서드에서 `SpringApplication.run()` 호출 전에 디렉토리 생성
+   - 데이터소스 초기화 전에 디렉토리 생성 보장
+   - 가장 이른 시점에 실행되어 안정성 확보
+
+2. **JpaConfig에 디렉토리 자동 생성 로직 유지 (이중 안전장치)**
    - `@PostConstruct` 메서드로 애플리케이션 시작 시 실행
+   - `@Order(HIGHEST_PRECEDENCE)`로 최우선 실행
    - `spring.datasource.url`에서 데이터베이스 경로 추출
    - 상대 경로를 절대 경로로 변환
    - 디렉토리가 없으면 자동 생성
 
 ### 변경된 파일
+- `src/main/java/vibe/scon/scon_backend/SconBackendApplication.java`
+  - `main` 메서드에서 `ensureDatabaseDirectoryExists()` 호출 추가
+  - Spring 시작 전에 디렉토리 생성 보장
+  
 - `src/main/java/vibe/scon/scon_backend/config/JpaConfig.java`
-  - `ensureDatabaseDirectoryExists()` 메서드 추가
+  - `ensureDatabaseDirectoryExists()` 메서드 유지
   - `@PostConstruct` 어노테이션으로 초기화 시점에 실행
+  - `@Order(HIGHEST_PRECEDENCE)` 추가
   - 로깅 추가 (생성 성공/실패, 디버그 로그)
 
 ## 구현 상세
@@ -79,14 +94,15 @@ feat/owner-schedule-api-and-improvements
 
 ### 커밋
 ```
-6f6f08f [fix] SQLite 데이터베이스 디렉토리 자동 생성 로직 추가
+e722a9a [fix] SQLite 데이터베이스 디렉토리 생성 시점 조정 - main 메서드에서 Spring 시작 전 실행
+4a75a6f [fix] SQLite 데이터베이스 디렉토리 생성 시점 변경: Spring 시작 전에 실행되도록 수정
 ```
 
 ### 변경 통계
 ```
-1 file changed
-~40 insertions(+)
-~5 deletions(-)
+6 files changed
+502 insertions(+)
+5 deletions(-)
 ```
 
 ## 영향 범위

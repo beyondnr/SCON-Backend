@@ -202,6 +202,92 @@ class StoreControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("INTG-SETTINGS-003: 매장 정보 부분 수정 테스트")
+    void updateStore_partialUpdate_success() throws Exception {
+        // Given - 매장 생성 (모든 필드 포함)
+        StoreRequestDto createRequest = StoreRequestDto.builder()
+                .name("부분수정테스트매장")
+                .businessType("베이커리")
+                .address("서울시 강남구")
+                .openTime(LocalTime.of(9, 0))
+                .closeTime(LocalTime.of(18, 0))
+                .storeHoliday(DayOfWeek.SATURDAY)
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/stores")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long storeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+
+        // When & Then - 부분 수정 (이름과 주소만 수정, 나머지는 기존 값 유지)
+        // name은 @NotBlank로 필수이므로 포함해야 함
+        // Store.update() 메서드가 null 체크를 통해 부분 업데이트를 지원
+        StoreRequestDto partialUpdateRequest = StoreRequestDto.builder()
+                .name("부분수정된매장명") // 이름 수정 (필수)
+                .businessType(null) // 업종은 수정하지 않음 (null 체크로 인해 업데이트 안 됨)
+                .address("서울시 강남구 테헤란로 456") // 주소만 수정
+                .openTime(null) // 영업시간은 수정하지 않음
+                .closeTime(null)
+                .storeHoliday(DayOfWeek.SATURDAY) // 휴무일은 기존 값 유지 (null로 전달하면 null로 업데이트되므로)
+                .build();
+
+        mockMvc.perform(put("/api/v1/stores/{id}", storeId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(partialUpdateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("부분수정된매장명"))
+                .andExpect(jsonPath("$.data.address").value("서울시 강남구 테헤란로 456"))
+                .andExpect(jsonPath("$.data.businessType").value("베이커리")) // 변경되지 않음 (null 체크)
+                .andExpect(jsonPath("$.data.openTime").value("09:00:00")) // 변경되지 않음 (null 체크)
+                .andExpect(jsonPath("$.data.closeTime").value("18:00:00")) // 변경되지 않음 (null 체크)
+                .andExpect(jsonPath("$.data.storeHoliday").value("SATURDAY")); // 기존 값 유지
+    }
+
+    @Test
+    @DisplayName("INTG-SETTINGS-006: 매장 정보 수정 시 유효성 검증 실패 테스트 (fieldErrors 포함)")
+    void updateStore_validationFailure_returnsFieldErrors() throws Exception {
+        // Given - 매장 생성
+        StoreRequestDto createRequest = StoreRequestDto.builder()
+                .name("유효성검증매장")
+                .businessType("카페")
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/stores")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long storeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .get("data").get("id").asLong();
+
+        // When & Then - 유효성 검증 실패 (name이 빈 문자열)
+        StoreRequestDto invalidRequest = StoreRequestDto.builder()
+                .name("") // @NotBlank 검증 실패
+                .businessType("카페")
+                .build();
+
+        mockMvc.perform(put("/api/v1/stores/{id}", storeId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(greaterThan(0))))
+                .andExpect(jsonPath("$.fieldErrors[0].field").exists())
+                .andExpect(jsonPath("$.fieldErrors[0].message").exists())
+                .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("name"))); // name 필드 에러 포함
+    }
+
+    @Test
     @DisplayName("TC-STORE-005: 내 매장 목록 조회 API 성공")
     void getMyStores_success() throws Exception {
         // Given - 매장 2개 생성

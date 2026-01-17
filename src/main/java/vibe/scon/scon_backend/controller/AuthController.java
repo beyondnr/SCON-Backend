@@ -7,7 +7,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vibe.scon.scon_backend.dto.ApiResponse;
@@ -258,7 +260,14 @@ public class AuthController {
     /**
      * HttpOnly Cookie 설정 유틸리티 메서드.
      * 
-     * <p>환경별 Secure 플래그를 자동으로 설정합니다.</p>
+     * <p>환경별 Secure 플래그를 자동으로 설정합니다.
+     * Spring의 ResponseCookie를 사용하여 SameSite 속성을 올바르게 설정합니다.</p>
+     * 
+     * <h4>INTG-BE-Phase2-v1.1.0 (2026-01-03):</h4>
+     * <ul>
+     *   <li>Cookie SameSite 설정 개선: ResponseCookie 사용으로 변경</li>
+     *   <li>기존 setAttribute 방식은 Java Servlet API에서 SameSite 속성이 제대로 설정되지 않을 수 있음</li>
+     * </ul>
      * 
      * @param response HTTP 응답
      * @param name Cookie 이름
@@ -266,32 +275,51 @@ public class AuthController {
      * @param maxAge Cookie 만료 시간 (초 단위)
      */
     private void setCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);
-        
         // 프로파일별 Secure 설정
         String activeProfile = environment.getProperty("spring.profiles.active", "dev");
         boolean isProduction = "prod".equals(activeProfile) || "production".equals(activeProfile);
-        cookie.setSecure(isProduction);
         
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAge);
-        cookie.setAttribute("SameSite", "Strict");
-        response.addCookie(cookie);
+        // Spring의 ResponseCookie를 사용하여 SameSite 속성을 올바르게 설정
+        ResponseCookie cookie = ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(isProduction)
+                .path("/")
+                .maxAge(maxAge)
+                .sameSite("Strict")
+                .build();
+        
+        // Set-Cookie 헤더로 추가 (ResponseCookie의 toString()이 올바른 형식으로 변환)
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
     
     /**
      * Cookie 삭제 유틸리티 메서드.
      * 
+     * <p>Cookie를 삭제하기 위해 MaxAge를 0으로 설정하고 SameSite 속성을 포함합니다.</p>
+     * 
+     * <h4>INTG-BE-Phase2-v1.1.0 (2026-01-03):</h4>
+     * <ul>
+     *   <li>ResponseCookie 사용으로 변경하여 일관성 유지</li>
+     * </ul>
+     * 
      * @param response HTTP 응답
      * @param name 삭제할 Cookie 이름
      */
     private void deleteCookie(HttpServletResponse response, String name) {
-        Cookie cookie = new Cookie(name, null);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        // 프로파일별 Secure 설정
+        String activeProfile = environment.getProperty("spring.profiles.active", "dev");
+        boolean isProduction = "prod".equals(activeProfile) || "production".equals(activeProfile);
+        
+        // ResponseCookie를 사용하여 삭제 (MaxAge=0)
+        ResponseCookie cookie = ResponseCookie.from(name, "")
+                .httpOnly(true)
+                .secure(isProduction)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+        
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
     
     /**

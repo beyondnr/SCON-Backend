@@ -71,5 +71,14 @@ public class JpaConfig {
             // (다른 방법으로 해결될 수 있음)
         }
     }
+    
+    /**
+     * 참고: SQLite WAL 모드는 Network Volume 환경(CloudType 등)에서 지원되지 않으므로
+     * WAL 모드 활성화 코드를 포함하지 않습니다.
+     * 
+     * <p>WAL 모드가 필요한 경우 로컬 파일 시스템에서만 사용하세요.</p>
+     * 
+     * @see <a href="https://www.sqlite.org/wal.html">SQLite WAL Mode</a>
+     */
 }
 

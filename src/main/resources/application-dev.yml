@@ -7,6 +7,18 @@ spring:
   datasource:
     url: jdbc:sqlite:${SQLITE_DB_PATH:./data/scon_dev.db}
     driver-class-name: org.sqlite.JDBC
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      # SQLite는 동시 쓰기 제한이 있으므로 커넥션 풀 크기 제한
+      minimum-idle: 2
+      maximum-pool-size: 10  # SQLite 권장값
+      connection-timeout: 30000  # 30초
+      idle-timeout: 600000  # 10분
+      max-lifetime: 1800000  # 30분
+      leak-detection-threshold: 60000  # 1분
+      
+      # SQLite 특화 설정
+      connection-test-query: SELECT 1
 
   # JPA Development Settings
   jpa:
@@ -18,6 +30,11 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.community.dialect.SQLiteDialect
+        # 배치 작업 최적화
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
 
 # Logging - More verbose for development
 logging:
