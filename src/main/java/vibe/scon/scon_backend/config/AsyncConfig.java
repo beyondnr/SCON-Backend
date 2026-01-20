@@ -1,11 +1,14 @@
 package vibe.scon.scon_backend.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -37,6 +40,14 @@ public class AsyncConfig {
      * 
      * <p>큰 풀 크기와 큐를 가진 Executor로, 일반적인 비동기 작업에 사용됩니다.</p>
      * 
+     * <p>MDC 전파를 위한 TaskDecorator가 설정되어 있어, 비동기 작업에서도
+     * 로그 추적이 가능합니다.</p>
+     * 
+     * <h3>요구사항 추적:</h3>
+     * <ul>
+     *   <li>{@code BE_GA4.md Phase 1.3}: MDC 전파를 위한 TaskDecorator 추가</li>
+     * </ul>
+     * 
      * @return ThreadPoolTaskExecutor 인스턴스
      */
     @Bean(name = "taskExecutor")
@@ -46,15 +57,45 @@ public class AsyncConfig {
         executor.setMaxPoolSize(50);
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("async-task-");
+        
+        // MDC 전파를 위한 TaskDecorator 설정
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         
-        log.info("TaskExecutor initialized: corePoolSize={}, maxPoolSize={}, queueCapacity={}",
+        log.info("TaskExecutor initialized with MDC propagation: corePoolSize={}, maxPoolSize={}, queueCapacity={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
+    }
+    
+    /**
+     * MDC를 비동기 작업으로 전파하는 TaskDecorator.
+     * 
+     * <p>@Async로 실행되는 비동기 작업에서도 MDC의 requestId가 전파되어
+     * 로그 추적이 가능하도록 합니다.</p>
+     * 
+     * <p>현재 스레드의 MDC 컨텍스트를 복사하여 비동기 스레드에 설정하고,
+     * 작업 완료 후 정리합니다.</p>
+     */
+    private static class MdcTaskDecorator implements TaskDecorator {
+        @Override
+        public Runnable decorate(Runnable runnable) {
+            Map<String, String> contextMap = MDC.getCopyOfContextMap();
+            return () -> {
+                try {
+                    if (contextMap != null) {
+                        MDC.setContextMap(contextMap);
+                    }
+                    runnable.run();
+                } finally {
+                    MDC.clear();
+                }
+            };
+        }
     }
     
     /**

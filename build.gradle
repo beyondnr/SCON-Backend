@@ -59,6 +59,9 @@ dependencies {
 	// ULID 생성 라이브러리 (Request ID 추적용)
 	implementation 'com.github.f4b6a3:ulid-creator:5.2.3'
 
+	// Apache HttpClient 5.x (RestTemplate 사용, GA4 이벤트 전송용)
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'

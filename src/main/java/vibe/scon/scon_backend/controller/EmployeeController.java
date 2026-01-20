@@ -1,8 +1,10 @@
 package vibe.scon.scon_backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -10,9 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import vibe.scon.scon_backend.dto.ApiResponse;
 import vibe.scon.scon_backend.dto.employee.EmployeeRequestDto;
 import vibe.scon.scon_backend.dto.employee.EmployeeResponseDto;
+import vibe.scon.scon_backend.service.AnalyticsService;
 import vibe.scon.scon_backend.service.EmployeeService;
+import com.github.f4b6a3.ulid.UlidCreator;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 직원 관리 API 컨트롤러.
@@ -44,6 +49,7 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final AnalyticsService analyticsService;
 
     /**
      * 직원 등록 API.
@@ -71,13 +77,39 @@ public class EmployeeController {
     public ResponseEntity<ApiResponse<EmployeeResponseDto>> createEmployee(
             Authentication authentication,
             @PathVariable Long storeId,
-            @Valid @RequestBody EmployeeRequestDto request) {
+            @Valid @RequestBody EmployeeRequestDto request,
+            HttpServletRequest httpRequest) {
         
         Long ownerId = (Long) authentication.getPrincipal();
         log.info("Create employee request. ownerId: {}, storeId: {}, employeeName: {}", 
                 ownerId, storeId, request.getName());
         
+        long startTime = System.currentTimeMillis();
         EmployeeResponseDto response = employeeService.createEmployee(ownerId, storeId, request);
+        
+        // 첫 직원 등록 여부 확인 (온보딩 Step 3 완료)
+        List<EmployeeResponseDto> employees = employeeService.getEmployeesByStore(ownerId, storeId);
+        if (employees.size() == 1) {
+            // GA4 이벤트 전송 (비동기)
+            String sessionId = MDC.get("requestId");
+            if (sessionId == null) {
+                sessionId = httpRequest.getHeader("X-Request-ID");
+                if (sessionId == null) {
+                    sessionId = UlidCreator.getUlid().toString();
+                }
+            }
+            
+            analyticsService.logEvent(
+                ownerId.toString(),
+                sessionId,
+                "scon_onboarding_step3_complete",
+                Map.of(
+                    "store_id", storeId.toString(),
+                    "employee_count", 1,
+                    "time_to_complete", (System.currentTimeMillis() - startTime) / 1000
+                )
+            );
+        }
         
         return ResponseEntity
                 .status(HttpStatus.CREATED)
