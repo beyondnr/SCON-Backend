@@ -110,3 +110,15 @@ app:
     enable-request-logging: ${ENABLE_API_REQUEST_LOGGING:true}
     # API 응답 로깅 활성화 여부 (기본값: true)
     enable-response-logging: ${ENABLE_API_RESPONSE_LOGGING:true}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Google Analytics 4 (GA4) Configuration
+  # ─────────────────────────────────────────────────────────────────────────
+  analytics:
+    ga4:
+      # GA4 활성화 여부 (기본값: true)
+      enabled: ${GA4_ENABLED:true}
+      # GA4 Measurement ID (프로덕션에서는 환경 변수로 오버라이드 필수)
+      measurement-id: ${GA4_MEASUREMENT_ID:G-5LKZWVK4NY}
+      # GA4 API Secret (프로덕션에서는 환경 변수로 오버라이드 필수)
+      api-secret: ${GA4_API_SECRET:d2UPSS0MR86U8a0ayC9wsA}

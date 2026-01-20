@@ -1,8 +1,10 @@
 package vibe.scon.scon_backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,11 +14,14 @@ import vibe.scon.scon_backend.dto.async.AsyncTaskResponseDto;
 import vibe.scon.scon_backend.dto.store.StoreRequestDto;
 import vibe.scon.scon_backend.dto.store.StoreResponseDto;
 import vibe.scon.scon_backend.entity.enums.TaskStatus;
+import vibe.scon.scon_backend.service.AnalyticsService;
 import vibe.scon.scon_backend.service.AsyncStoreService;
 import vibe.scon.scon_backend.service.AsyncTaskService;
 import vibe.scon.scon_backend.service.StoreService;
+import com.github.f4b6a3.ulid.UlidCreator;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 매장 관리 API 컨트롤러.
@@ -50,6 +55,7 @@ public class StoreController {
     private final StoreService storeService;
     private final AsyncStoreService asyncStoreService;
     private final AsyncTaskService asyncTaskService;
+    private final AnalyticsService analyticsService;
 
     /**
      * 매장 생성 API.
@@ -70,12 +76,35 @@ public class StoreController {
     @PostMapping
     public ResponseEntity<ApiResponse<StoreResponseDto>> createStore(
             Authentication authentication,
-            @Valid @RequestBody StoreRequestDto request) {
+            @Valid @RequestBody StoreRequestDto request,
+            HttpServletRequest httpRequest) {
         
         Long ownerId = (Long) authentication.getPrincipal();
         log.info("Create store request. ownerId: {}, storeName: {}", ownerId, request.getName());
         
+        long startTime = System.currentTimeMillis();
         StoreResponseDto response = storeService.createStore(ownerId, request);
+        
+        // GA4 이벤트 전송 (비동기)
+        String sessionId = MDC.get("requestId");
+        if (sessionId == null) {
+            sessionId = httpRequest.getHeader("X-Request-ID");
+            if (sessionId == null) {
+                sessionId = UlidCreator.getUlid().toString();
+            }
+        }
+        
+        analyticsService.logEvent(
+            ownerId.toString(),
+            sessionId,
+            "scon_onboarding_step2_complete",
+            Map.of(
+                "store_id", response.getId().toString(),
+                "store_name", response.getName(),
+                "business_type", response.getBusinessType() != null ? response.getBusinessType() : "기타",
+                "time_to_complete", (System.currentTimeMillis() - startTime) / 1000 // 초 단위
+            )
+        );
         
         return ResponseEntity
                 .status(HttpStatus.CREATED)

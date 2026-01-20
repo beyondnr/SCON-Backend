@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,12 @@ import vibe.scon.scon_backend.dto.auth.RefreshTokenRequestDto;
 import vibe.scon.scon_backend.dto.auth.SignupRequestDto;
 import vibe.scon.scon_backend.dto.auth.TokenResponseDto;
 import vibe.scon.scon_backend.exception.BadRequestException;
+import vibe.scon.scon_backend.service.AnalyticsService;
 import vibe.scon.scon_backend.service.AuthService;
+import com.github.f4b6a3.ulid.UlidCreator;
+
+import java.time.Instant;
+import java.util.Map;
 
 /**
  * 인증 API 컨트롤러.
@@ -52,6 +58,7 @@ import vibe.scon.scon_backend.service.AuthService;
 public class AuthController {
 
     private final AuthService authService;
+    private final AnalyticsService analyticsService;
     private final Environment environment;
 
     /**
@@ -79,6 +86,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<TokenResponseDto>> signup(
             @Valid @RequestBody SignupRequestDto request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
         
         log.info("Signup request received for email: {}", request.getEmail());
@@ -88,6 +96,27 @@ public class AuthController {
         // HttpOnly Cookie로 토큰 설정
         setCookie(response, "accessToken", tokenResponse.getAccessToken(), 1800); // 30분
         setCookie(response, "refreshToken", tokenResponse.getRefreshToken(), 604800); // 7일
+        
+        // GA4 이벤트 전송 (비동기)
+        // MDC에서 requestId 추출 (RequestIdTrackingFilter가 설정함)
+        String sessionId = MDC.get("requestId");
+        if (sessionId == null) {
+            // MDC에 없으면 헤더에서 직접 읽기
+            sessionId = httpRequest.getHeader("X-Request-ID");
+            if (sessionId == null) {
+                sessionId = UlidCreator.getUlid().toString();
+            }
+        }
+        
+        analyticsService.logEvent(
+            tokenResponse.getOwnerId().toString(),
+            sessionId,
+            "sign_up",
+            Map.of(
+                "method", "email",
+                "signup_timestamp", Instant.now().toString()
+            )
+        );
         
         // 응답 본문에서는 토큰 제거 (보안 강화)
         // ownerId와 email만 반환
@@ -126,6 +155,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<TokenResponseDto>> login(
             @Valid @RequestBody LoginRequestDto request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
         
         log.info("Login request received for email: {}", request.getEmail());
@@ -135,6 +165,25 @@ public class AuthController {
         // HttpOnly Cookie로 토큰 설정
         setCookie(response, "accessToken", tokenResponse.getAccessToken(), 1800); // 30분
         setCookie(response, "refreshToken", tokenResponse.getRefreshToken(), 604800); // 7일
+        
+        // GA4 이벤트 전송 (비동기)
+        String sessionId = MDC.get("requestId");
+        if (sessionId == null) {
+            sessionId = httpRequest.getHeader("X-Request-ID");
+            if (sessionId == null) {
+                sessionId = UlidCreator.getUlid().toString();
+            }
+        }
+        
+        analyticsService.logEvent(
+            tokenResponse.getOwnerId().toString(),
+            sessionId,
+            "login",
+            Map.of(
+                "method", "email",
+                "login_timestamp", Instant.now().toString()
+            )
+        );
         
         // 응답 본문에서는 토큰 제거 (보안 강화)
         // ownerId와 email만 반환
